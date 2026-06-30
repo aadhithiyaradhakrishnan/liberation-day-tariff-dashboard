@@ -1,0 +1,25 @@
+{
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begin{tabular}{l*{3}{c}}
+\toprule
+                    &\multicolumn{1}{c}{(1)}&\multicolumn{1}{c}{(2)}&\multicolumn{1}{c}{(3)}\\
+                    &\multicolumn{1}{c}{Agriculture}&\multicolumn{1}{c}{Manufcaturing}&\multicolumn{1}{c}{Mining}\\
+\midrule
+$ \ln (1+ t_{ij}) $ &      -3.339\sym{***}&      -3.801\sym{***}&      -4.056\sym{*}  \\
+                    &     (0.529)         &     (0.170)         &     (2.198)         \\
+\addlinespace
+$ \ln (1+ \text{Dist}_{ij}) $&      -1.079\sym{***}&      -1.438\sym{***}&      -1.090\sym{***}\\
+                    &     (0.027)         &     (0.008)         &     (0.052)         \\
+[2em]
+Observations        &                     &                     &                     \\
+Exporters           &                     &                     &                     \\
+Importers           &                     &                     &                     \\
+Exporter Product FE &         Yes         &         Yes         &         Yes         \\
+Importer Product FE &                     &                     &                     \\
+Control for Common Border&                     &                     &                     \\
+Control for Common Language&                     &                     &                     \\
+Control for Trade Agreement&                     &                     &                     \\
+Control for Colonial Links&                     &                     &                     \\
+\bottomrule
+\end{tabular}
+}

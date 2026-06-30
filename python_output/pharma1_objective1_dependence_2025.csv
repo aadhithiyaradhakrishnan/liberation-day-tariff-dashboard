@@ -1,0 +1,11 @@
+rank,country,imports_2025_bn,share_2025_pct,tariff_pct,cumulative_share_pct
+1,Ireland,45.49,21.77,20.00,21.77
+2,Germany,25.49,12.20,20.00,33.97
+3,Switzerland,19.57,9.37,31.00,43.34
+4,India,15.02,7.19,27.00,50.53
+5,Belgium,11.95,5.72,20.00,56.25
+6,Italy,11.54,5.52,20.00,61.77
+7,France,11.37,5.44,20.00,67.22
+8,Singapore,11.23,5.38,10.00,72.59
+9,Netherlands,8.47,4.05,20.00,76.65
+10,Japan,7.03,3.36,24.00,80.01

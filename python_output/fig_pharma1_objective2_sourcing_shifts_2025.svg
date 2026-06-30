@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-label="2025 pharmaceutical sourcing shifts after tariffs">
+  <style>
+    .title { font: 700 25px Arial, sans-serif; fill: #1d2733; }
+    .subtitle { font: 400 13px Arial, sans-serif; fill: #536273; }
+    .section { font: 700 15px Arial, sans-serif; fill: #1d2733; }
+    .country { font: 700 14px Arial, sans-serif; fill: #253244; }
+    .value { font: 400 13px Arial, sans-serif; fill: #2d3b4f; }
+    .metric-label { font: 700 13px Arial, sans-serif; fill: #536273; }
+    .metric-value { font: 700 28px Arial, sans-serif; fill: #1d2733; }
+    .footnote { font: 400 11px Arial, sans-serif; fill: #748297; }
+  </style>
+  <rect width="960" height="640" fill="#ffffff"/>
+  <text x="52" y="52" class="title">Estimated Pharmaceutical Sourcing Shifts After Tariffs, 2025</text>
+  <text x="52" y="78" class="subtitle">Gravity-style reallocation with elasticity 2.3: lower-tariff suppliers gain share, high-tariff suppliers lose share.</text>
+  <text x="52" y="104" class="section">Largest gains and losses in import share</text>
+  <line x1="480" y1="110" x2="480" y2="540" stroke="#9aa8b8" stroke-dasharray="4 4"/>
+  <text x="382" y="104" class="subtitle">Losses</text>
+  <text x="500" y="104" class="subtitle">Gains</text>
+  
+      <text x="52" y="135" class="country">Singapore</text>
+      <text x="245" y="135" class="subtitle">tariff 10%</text>
+      <rect x="480.0" y="118" width="208.2" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="696.2" y="135" text-anchor="start" class="value">+1.31pp</text>
+
+      <text x="52" y="177" class="country">United Kingdom</text>
+      <text x="245" y="177" class="subtitle">tariff 10%</text>
+      <rect x="480.0" y="160" width="93.2" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="581.2" y="177" text-anchor="start" class="value">+0.59pp</text>
+
+      <text x="52" y="219" class="country">Canada</text>
+      <text x="245" y="219" class="subtitle">tariff 10%</text>
+      <rect x="480.0" y="202" width="65.1" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="553.1" y="219" text-anchor="start" class="value">+0.41pp</text>
+
+      <text x="52" y="261" class="country">Ireland</text>
+      <text x="245" y="261" class="subtitle">tariff 20%</text>
+      <rect x="480.0" y="244" width="62.5" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="550.5" y="261" text-anchor="start" class="value">+0.39pp</text>
+
+      <text x="52" y="303" class="country">Germany</text>
+      <text x="245" y="303" class="subtitle">tariff 20%</text>
+      <rect x="480.0" y="286" width="35.0" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="523.0" y="303" text-anchor="start" class="value">+0.22pp</text>
+
+      <text x="52" y="345" class="country">Switzerland</text>
+      <text x="245" y="345" class="subtitle">tariff 31%</text>
+      <rect x="230.0" y="328" width="250.0" height="24" rx="4" fill="#b91c1c"/>
+      <text x="222.0" y="345" text-anchor="end" class="value">-1.57pp</text>
+
+      <text x="52" y="387" class="country">India</text>
+      <text x="245" y="387" class="subtitle">tariff 27%</text>
+      <rect x="358.5" y="370" width="121.5" height="24" rx="4" fill="#b91c1c"/>
+      <text x="350.5" y="387" text-anchor="end" class="value">-0.76pp</text>
+
+      <text x="52" y="429" class="country">China</text>
+      <text x="245" y="429" class="subtitle">tariff 54%</text>
+      <rect x="362.2" y="412" width="117.8" height="24" rx="4" fill="#b91c1c"/>
+      <text x="354.2" y="429" text-anchor="end" class="value">-0.74pp</text>
+
+      <text x="52" y="471" class="country">South Korea</text>
+      <text x="245" y="471" class="subtitle">tariff 26%</text>
+      <rect x="446.6" y="454" width="33.4" height="24" rx="4" fill="#b91c1c"/>
+      <text x="438.6" y="471" text-anchor="end" class="value">-0.21pp</text>
+
+      <text x="52" y="513" class="country">Japan</text>
+      <text x="245" y="513" class="subtitle">tariff 24%</text>
+      <rect x="450.1" y="496" width="29.9" height="24" rx="4" fill="#b91c1c"/>
+      <text x="442.1" y="513" text-anchor="end" class="value">-0.19pp</text>
+  <rect x="52" y="562" width="250" height="52" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+  <text x="68" y="584" class="metric-label">Top 5 share</text>
+  <text x="68" y="606" class="subtitle">56.3% pre-tariff -> 55.5% post-tariff</text>
+  <rect x="330" y="562" width="250" height="52" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+  <text x="346" y="584" class="metric-label">Supplier HHI</text>
+  <text x="346" y="606" class="subtitle">942 pre-tariff -> 948 post-tariff</text>
+  <text x="610" y="592" class="footnote">Interpretation: tariffs reallocate sourcing only partially; they do not materially diversify supplier dependence.</text>
+</svg>

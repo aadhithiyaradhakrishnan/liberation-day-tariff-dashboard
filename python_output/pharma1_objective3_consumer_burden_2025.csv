@@ -1,0 +1,6 @@
+group,annual_drug_spending_usd,extra_cost_from_tariffs_usd,burden_pct_income
+Q1 (Lowest 20%),595,61.51,0.361
+Q2,946,97.80,0.227
+Q3 (Middle),1080,111.66,0.155
+Q4,1008,104.21,0.093
+Q5 (Top 20%),1190,123.03,0.052

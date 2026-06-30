@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-label="2025 U.S. pharmaceutical supplier dependence and tariff exposure">
+  <style>
+    .title { font: 700 25px Arial, sans-serif; fill: #1d2733; }
+    .subtitle { font: 400 14px Arial, sans-serif; fill: #536273; }
+    .section { font: 700 15px Arial, sans-serif; fill: #1d2733; }
+    .country { font: 700 14px Arial, sans-serif; fill: #253244; }
+    .value { font: 400 13px Arial, sans-serif; fill: #2d3b4f; }
+    .metric-label { font: 700 13px Arial, sans-serif; fill: #536273; text-transform: uppercase; }
+    .metric-value { font: 700 28px Arial, sans-serif; fill: #1d2733; }
+    .metric-note { font: 400 12px Arial, sans-serif; fill: #66758a; }
+    .footnote { font: 400 11px Arial, sans-serif; fill: #748297; }
+  </style>
+  <rect width="960" height="640" fill="#ffffff"/>
+  <text x="52" y="52" class="title">U.S. Pharmaceutical Import Dependence, 2025</text>
+  <text x="52" y="78" class="subtitle">Pharma1 imports for consumption: $208.9B across 97 supplier countries | Trade-weighted tariff: 21.35%</text>
+
+  <text x="52" y="115" class="section">Top 5 supplier countries by import share</text>
+  <text x="235" y="115" class="subtitle">Share of total 2025 U.S. pharmaceutical imports</text>
+  
+      <text x="52" y="161" class="country">1. Ireland</text>
+      <rect x="235" y="142" width="430.0" height="28" rx="4" fill="#dc6b2f"/>
+      <text x="675" y="161" class="value">21.77% | $45.5B | tariff 20%</text>
+
+      <text x="52" y="217" class="country">2. Germany</text>
+      <rect x="235" y="198" width="241.0" height="28" rx="4" fill="#dc6b2f"/>
+      <text x="485.9701279462041" y="217" class="value">12.20% | $25.5B | tariff 20%</text>
+
+      <text x="52" y="273" class="country">3. Switzerland</text>
+      <rect x="235" y="254" width="185.0" height="28" rx="4" fill="#b91c1c"/>
+      <text x="430.0306740786343" y="273" class="value">9.37% | $19.6B | tariff 31%</text>
+
+      <text x="52" y="329" class="country">4. India</text>
+      <rect x="235" y="310" width="141.9" height="28" rx="4" fill="#dc6b2f"/>
+      <text x="386.9499725473577" y="329" class="value">7.19% | $15.0B | tariff 27%</text>
+
+      <text x="52" y="385" class="country">5. Belgium</text>
+      <rect x="235" y="366" width="113.0" height="28" rx="4" fill="#dc6b2f"/>
+      <text x="357.9988838862" y="385" class="value">5.72% | $12.0B | tariff 20%</text>
+
+  <line x1="52" y1="430" x2="908" y2="430" stroke="#d6dde5"/>
+  <text x="52" y="448" class="section">Tariff-exposed supply-risk indicators</text>
+  
+      <rect x="52" y="462" width="190" height="104" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+      <text x="68" y="492" class="metric-label">Top 5 Share</text>
+      <text x="68" y="526" class="metric-value">56.3%</text>
+      <text x="68" y="550" class="metric-note">More than half of imports</text>
+
+      <rect x="266" y="462" width="190" height="104" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+      <text x="282" y="492" class="metric-label">Top 10 Share</text>
+      <text x="282" y="526" class="metric-value">80.0%</text>
+      <text x="282" y="550" class="metric-note">Broad foreign dependence</text>
+
+      <rect x="480" y="462" width="190" height="104" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+      <text x="496" y="492" class="metric-label">Tariff &gt;= 20%</text>
+      <text x="496" y="526" class="metric-value">88.1%</text>
+      <text x="496" y="550" class="metric-note">Most import value exposed</text>
+
+      <rect x="694" y="462" width="190" height="104" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+      <text x="710" y="492" class="metric-label">Low Tariff &lt;= 10%</text>
+      <text x="710" y="526" class="metric-value">10.1%</text>
+      <text x="710" y="550" class="metric-note">Limited alternatives</text>
+
+  <circle cx="710" cy="156" r="6" fill="#dc6b2f"/>
+  <text x="724" y="161" class="subtitle">20-29% tariff</text>
+  <circle cx="810" cy="156" r="6" fill="#b91c1c"/>
+  <text x="824" y="161" class="subtitle">30%+ tariff</text>
+
+  <text x="52" y="606" class="footnote">Interpretation: supplier concentration is moderate by HHI (942), but risk is high because 88.1% of imports face tariffs of at least 20% and low-tariff alternatives are only 10.1%.</text>
+</svg>

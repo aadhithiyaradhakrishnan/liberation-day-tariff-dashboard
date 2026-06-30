@@ -1,0 +1,15 @@
+{
+  "input_file": "data\\pharma_bilateral_trade.xlsx",
+  "sheet": "Sheet1",
+  "ref_year_used": 2024,
+  "n_source_rows_year": 132,
+  "n_countries": 132,
+  "total_trade_value_usd": 40492530745.256004,
+  "share_rows_partner_usa": 1.0,
+  "flow_convention": "Import (M): reporter imports from partner. partnerISO=USA => US exports to reporter (not US imports by origin).",
+  "output_csv": "data\\processed\\shocks\\pharma_trade_weights.csv",
+  "notes": [
+    "Weights sum to 1 over countries in this extract.",
+    "For US import-side calibration, obtain Comtrade with reporterISO=USA."
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "year": 2022,
+  "input_file": "data\\OECD_ICIO_SML_2016_2022\\2022_SML.csv",
+  "n_country_sector": 4050,
+  "flow_matrix_shape": [
+    4050,
+    4050
+  ],
+  "flow_matrix_nonnegative": true,
+  "flow_matrix_total": 103410084.84310001,
+  "n_zero_columns_in_flow_matrix": 122,
+  "flow_col_sum_min_nonzero": 0.0006000000000000001,
+  "flow_col_sum_max_nonzero": 3474337.0554,
+  "coeff_matrix_shape": [
+    4050,
+    4050
+  ],
+  "coeff_matrix_nonnegative": true,
+  "coeff_matrix_max": 0.9079072087802444,
+  "coeff_matrix_col_sums_equal_one": true,
+  "coeff_matrix_row_sum_min": 0.0,
+  "coeff_matrix_row_sum_max": 19.100726127867322
+}

@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug and experimental (keep in repo but document)
+# code_python/analysis/_debug/
+# code_python/analysis/_experimental/
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+
+# Old documentation
+python_output/_old_docs/
+
+# Large data files (>50MB) - download separately
+# See data/README.md for download instructions
+data/Dynamic_Gravity_Database/release_2.1_2015_2019.csv
+data/ITPDS/ITPD_S_R1.1_2019.csv
+data/ITPDS/estimation_sample.dta
+data/base_data/raw_data/BACI_HS22_Y2023_V202501.csv
+data/sectoral_tariffs/tariff_isic33_88_21_vbeta1-2024-12.csv
+data/sectoral_tariffs/tariff_isic33_88_21_vbeta1-2024-12.dta
+data/sectoral_tariffs/ref_isic33_vbeta1-2024-12.csv
+data/sectoral_tariffs/ref_isic33_vbeta1-2024-12.dta
+
+# Log files
+*.log
+
+# Files exceeding GitHub 100MB limit
+data/processed/icio_2022/io_coeff_matrix.npy
+data/processed/icio_2022/io_intermediate_matrix.npy
+data/code_and_release_data/301 model/D_all_data.zip

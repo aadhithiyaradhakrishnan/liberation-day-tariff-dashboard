@@ -1,0 +1,1001 @@
+S.No,Product Name,Product Type,Brand Name,Price Before Tariff,Price After Tariff
+1,Cooking Oil,Grocery,Aashirvaad,791.05,1091.47
+2,T-shirt,Clothing,Uniqlo,706.28,1025.91
+3,Sandals,Footwear,Puma,703.95,930.72
+4,Cooking Oil,Grocery,Saffola,874.9,1069.87
+5,Cooking Oil,Grocery,Saffola,746.76,1094.56
+6,Washing Machine,Home Appliances,Samsung,195.46,224.39
+7,Refrigerator,Home Appliances,Whirlpool,312.86,409.62
+8,Sneakers,Footwear,Adidas,937.21,1349.22
+9,Smartphone,Electronics,Samsung,11.31,12.77
+10,Smartphone,Electronics,Dell,32.09,41.59
+11,Cooking Oil,Grocery,Fortune,22.6,26.94
+12,Laptop,Electronics,Apple,807.63,1117.18
+13,Sandals,Footwear,Reebok,561.75,732.8
+14,T-shirt,Clothing,Uniqlo,160.02,226.33
+15,Cooking Oil,Grocery,Saffola,923.26,1367.44
+16,Laptop,Electronics,Samsung,212.05,310.22
+17,T-shirt,Clothing,Zara,104.56,142.53
+18,T-shirt,Clothing,Zara,510.15,665.48
+19,Smartphone,Electronics,Dell,630.33,772.76
+20,Jeans,Clothing,H&M,55.28,61.49
+21,Smartphone,Electronics,Lenovo,417.77,495.06
+22,T-shirt,Clothing,Levi's,50.74,71.27
+23,Cooking Oil,Grocery,Fortune,857.42,1262.63
+24,Refrigerator,Home Appliances,Whirlpool,980.15,1455.34
+25,T-shirt,Clothing,Levi's,739.28,1002.7
+26,Sandals,Footwear,Nike,520.64,641.36
+27,Cooking Oil,Grocery,Saffola,384.37,549.39
+28,Smartphone,Electronics,Lenovo,767.44,1042.27
+29,Sandals,Footwear,Puma,509.02,608.6
+30,Jeans,Clothing,H&M,625.8,701.13
+31,T-shirt,Clothing,H&M,596.83,761.55
+32,Jeans,Clothing,Uniqlo,856.07,1031.29
+33,Sandals,Footwear,Reebok,912.51,1277.51
+34,Laptop,Electronics,Dell,953.8,1292.32
+35,Laptop,Electronics,Dell,889.25,1327.42
+36,Smartphone,Electronics,Dell,621.52,711.3
+37,Refrigerator,Home Appliances,Bosch,202.04,295.79
+38,Sneakers,Footwear,Puma,670.24,910.4
+39,Jeans,Clothing,Levi's,235.44,259.87
+40,Sandals,Footwear,Adidas,529.91,680.83
+41,Laptop,Electronics,Dell,977.09,1175.38
+42,Washing Machine,Home Appliances,Whirlpool,588.16,781.07
+43,Jeans,Clothing,H&M,234.41,304.02
+44,T-shirt,Clothing,Uniqlo,451.15,510.91
+45,Rice,Grocery,Fortune,705.92,865.95
+46,Sandals,Footwear,Puma,567.59,624.54
+47,Washing Machine,Home Appliances,Whirlpool,194.87,218.91
+48,Cooking Oil,Grocery,Aashirvaad,49.25,56.09
+49,Sneakers,Footwear,Adidas,123.83,152.96
+50,Rice,Grocery,Aashirvaad,119.06,171.43
+51,Rice,Grocery,Fortune,618.23,812.26
+52,Washing Machine,Home Appliances,Samsung,496.77,722.35
+53,Sneakers,Footwear,Puma,871.26,1068.88
+54,Sandals,Footwear,Nike,696.23,793.53
+55,T-shirt,Clothing,Levi's,321.48,453.86
+56,Smartphone,Electronics,Lenovo,396.42,497.8
+57,Smartphone,Electronics,Lenovo,52.51,74.37
+58,Smartphone,Electronics,Samsung,295.05,388.36
+59,Refrigerator,Home Appliances,Samsung,299.71,402.64
+60,Sneakers,Footwear,Nike,805.9,1035.67
+61,Cooking Oil,Grocery,Fortune,19.41,22.35
+62,Sneakers,Footwear,Puma,272.98,340.85
+63,T-shirt,Clothing,Levi's,870.47,1231.46
+64,Washing Machine,Home Appliances,Samsung,104.63,126.02
+65,Jeans,Clothing,H&M,194.03,245.15
+66,Sneakers,Footwear,Adidas,535.13,632.61
+67,Laptop,Electronics,Dell,411.19,453.31
+68,Cooking Oil,Grocery,Saffola,518.11,646.88
+69,Laptop,Electronics,Lenovo,881.8,1207.64
+70,Smartphone,Electronics,Apple,931.02,1201.22
+71,T-shirt,Clothing,Levi's,321.23,399.29
+72,Cooking Oil,Grocery,Fortune,859.22,1088.16
+73,Washing Machine,Home Appliances,Samsung,70.44,83.34
+74,Jeans,Clothing,Uniqlo,888.2,1138.47
+75,Cooking Oil,Grocery,Saffola,991.93,1260.21
+76,T-shirt,Clothing,Zara,893.95,1210.65
+77,Smartphone,Electronics,Dell,32.62,47.74
+78,Laptop,Electronics,Lenovo,795.22,1172.55
+79,Sandals,Footwear,Adidas,96.47,141.94
+80,Jeans,Clothing,H&M,41.11,58.3
+81,Smartphone,Electronics,Apple,851.29,1169.88
+82,Sandals,Footwear,Nike,192.4,234.67
+83,Sneakers,Footwear,Reebok,924.28,1054.56
+84,Rice,Grocery,Tata,68.2,77.51
+85,T-shirt,Clothing,Zara,197.53,252.74
+86,Smartphone,Electronics,Apple,884.13,1202.66
+87,Jeans,Clothing,Zara,830.68,1171.55
+88,Refrigerator,Home Appliances,Whirlpool,933.15,1160.36
+89,Jeans,Clothing,Uniqlo,952.7,1257.09
+90,Sandals,Footwear,Adidas,927.82,1188.47
+91,Smartphone,Electronics,Samsung,807.92,916.03
+92,T-shirt,Clothing,Zara,355.0,428.53
+93,Jeans,Clothing,Zara,746.7,890.0
+94,Rice,Grocery,Saffola,224.67,333.29
+95,Laptop,Electronics,Apple,143.67,167.04
+96,Sandals,Footwear,Puma,847.52,993.48
+97,T-shirt,Clothing,Levi's,569.49,723.32
+98,Sneakers,Footwear,Adidas,889.31,1037.41
+99,Smartphone,Electronics,Lenovo,421.6,628.93
+100,Cooking Oil,Grocery,Tata,416.4,598.36
+101,Sandals,Footwear,Puma,403.8,586.76
+102,Cooking Oil,Grocery,Fortune,180.36,245.07
+103,Sandals,Footwear,Nike,331.81,459.95
+104,Jeans,Clothing,Zara,592.03,694.11
+105,Jeans,Clothing,Zara,231.84,280.14
+106,Washing Machine,Home Appliances,Samsung,912.52,1108.49
+107,Rice,Grocery,Fortune,75.46,103.66
+108,Smartphone,Electronics,Dell,902.58,1297.29
+109,Sandals,Footwear,Nike,806.24,892.15
+110,Rice,Grocery,Tata,424.94,605.64
+111,Rice,Grocery,Fortune,313.2,455.09
+112,Sandals,Footwear,Nike,231.11,257.28
+113,Cooking Oil,Grocery,Fortune,766.86,1003.91
+114,Smartphone,Electronics,Samsung,140.54,210.4
+115,Sandals,Footwear,Adidas,791.21,1099.14
+116,Refrigerator,Home Appliances,LG,439.41,506.43
+117,Washing Machine,Home Appliances,Whirlpool,123.94,170.15
+118,Laptop,Electronics,Lenovo,614.53,792.94
+119,Rice,Grocery,Tata,792.77,897.61
+120,Rice,Grocery,Saffola,898.12,1235.81
+121,Cooking Oil,Grocery,Tata,34.28,39.26
+122,Jeans,Clothing,Uniqlo,212.7,310.15
+123,Laptop,Electronics,Lenovo,836.32,1130.8
+124,Laptop,Electronics,Samsung,115.41,167.42
+125,Sneakers,Footwear,Nike,284.68,399.67
+126,Washing Machine,Home Appliances,Bosch,543.21,766.46
+127,Washing Machine,Home Appliances,Whirlpool,193.06,257.24
+128,Sneakers,Footwear,Nike,79.02,94.27
+129,Laptop,Electronics,Lenovo,633.79,920.2
+130,Jeans,Clothing,H&M,429.32,514.77
+131,T-shirt,Clothing,Uniqlo,803.32,1034.14
+132,Jeans,Clothing,Uniqlo,638.97,846.39
+133,Laptop,Electronics,Lenovo,484.01,669.2
+134,Refrigerator,Home Appliances,Samsung,422.92,490.47
+135,Cooking Oil,Grocery,Saffola,802.34,1154.69
+136,Smartphone,Electronics,Apple,610.58,742.72
+137,Rice,Grocery,Saffola,362.54,400.0
+138,Sneakers,Footwear,Reebok,55.66,68.91
+139,Smartphone,Electronics,Dell,697.97,1022.61
+140,Cooking Oil,Grocery,Saffola,962.74,1133.88
+141,Sneakers,Footwear,Adidas,648.02,969.56
+142,T-shirt,Clothing,Levi's,66.46,83.56
+143,T-shirt,Clothing,Levi's,95.19,122.28
+144,Rice,Grocery,Tata,758.18,878.38
+145,Jeans,Clothing,Uniqlo,149.88,176.47
+146,Sandals,Footwear,Reebok,443.99,603.27
+147,Smartphone,Electronics,Samsung,622.63,712.22
+148,Smartphone,Electronics,Samsung,82.14,115.34
+149,Sneakers,Footwear,Nike,126.2,160.62
+150,Laptop,Electronics,Dell,999.91,1191.37
+151,Smartphone,Electronics,Apple,175.65,246.82
+152,Sandals,Footwear,Adidas,387.44,439.91
+153,Smartphone,Electronics,Apple,39.32,50.78
+154,Smartphone,Electronics,Dell,36.72,54.09
+155,Sneakers,Footwear,Adidas,561.93,639.92
+156,Sneakers,Footwear,Reebok,321.49,404.12
+157,Smartphone,Electronics,Samsung,998.48,1132.55
+158,Refrigerator,Home Appliances,Bosch,913.08,1245.78
+159,Rice,Grocery,Saffola,893.38,1093.24
+160,Laptop,Electronics,Lenovo,62.42,70.54
+161,Jeans,Clothing,H&M,333.83,476.45
+162,Smartphone,Electronics,Lenovo,688.49,911.09
+163,Cooking Oil,Grocery,Tata,915.45,1200.72
+164,Smartphone,Electronics,Lenovo,209.14,264.04
+165,Rice,Grocery,Tata,331.46,400.7
+166,Laptop,Electronics,Lenovo,933.22,1081.09
+167,Rice,Grocery,Aashirvaad,688.92,887.76
+168,Jeans,Clothing,Levi's,876.49,1272.53
+169,Sneakers,Footwear,Puma,964.87,1395.07
+170,Jeans,Clothing,H&M,88.43,132.4
+171,Refrigerator,Home Appliances,Whirlpool,247.5,333.1
+172,Cooking Oil,Grocery,Tata,919.93,1023.72
+173,Washing Machine,Home Appliances,LG,990.52,1428.85
+174,Rice,Grocery,Aashirvaad,459.45,666.45
+175,Jeans,Clothing,Levi's,369.09,471.07
+176,Cooking Oil,Grocery,Saffola,641.66,866.2
+177,Rice,Grocery,Tata,864.01,1134.44
+178,Smartphone,Electronics,Samsung,719.12,1043.13
+179,Cooking Oil,Grocery,Aashirvaad,659.94,894.43
+180,Sneakers,Footwear,Reebok,527.77,706.24
+181,Sandals,Footwear,Nike,529.24,753.18
+182,Jeans,Clothing,H&M,457.93,557.86
+183,Refrigerator,Home Appliances,Bosch,871.49,1084.22
+184,Jeans,Clothing,Uniqlo,678.32,861.85
+185,Jeans,Clothing,H&M,593.42,663.63
+186,Sneakers,Footwear,Reebok,695.32,963.21
+187,Rice,Grocery,Tata,345.92,489.85
+188,Sandals,Footwear,Nike,405.71,452.24
+189,Refrigerator,Home Appliances,Samsung,946.61,1329.72
+190,Rice,Grocery,Aashirvaad,815.62,1082.97
+191,Refrigerator,Home Appliances,Bosch,796.42,1157.38
+192,Cooking Oil,Grocery,Fortune,703.43,1018.52
+193,T-shirt,Clothing,Uniqlo,531.61,707.57
+194,Cooking Oil,Grocery,Fortune,502.97,665.76
+195,Smartphone,Electronics,Lenovo,696.98,823.44
+196,Rice,Grocery,Fortune,364.47,542.31
+197,Cooking Oil,Grocery,Fortune,239.17,269.66
+198,Washing Machine,Home Appliances,Samsung,79.38,114.05
+199,Smartphone,Electronics,Lenovo,709.63,875.28
+200,T-shirt,Clothing,Zara,782.51,1147.56
+201,Smartphone,Electronics,Dell,33.64,41.65
+202,Refrigerator,Home Appliances,LG,646.77,913.9
+203,Washing Machine,Home Appliances,Bosch,627.57,912.68
+204,Jeans,Clothing,Uniqlo,703.29,969.58
+205,Jeans,Clothing,Levi's,422.7,554.68
+206,Washing Machine,Home Appliances,Samsung,309.29,385.94
+207,Smartphone,Electronics,Dell,258.76,363.98
+208,Laptop,Electronics,Lenovo,739.65,927.81
+209,Refrigerator,Home Appliances,Whirlpool,411.81,617.53
+210,Jeans,Clothing,Uniqlo,407.68,493.04
+211,Jeans,Clothing,Levi's,904.16,1329.48
+212,Jeans,Clothing,H&M,445.54,571.05
+213,Cooking Oil,Grocery,Tata,118.77,154.55
+214,Washing Machine,Home Appliances,Samsung,189.74,229.68
+215,Smartphone,Electronics,Lenovo,806.83,939.95
+216,Sandals,Footwear,Adidas,649.87,757.17
+217,Washing Machine,Home Appliances,Whirlpool,63.23,80.91
+218,Sneakers,Footwear,Adidas,725.9,874.69
+219,Refrigerator,Home Appliances,LG,286.94,363.97
+220,Sandals,Footwear,Nike,560.56,724.93
+221,Cooking Oil,Grocery,Aashirvaad,206.3,277.93
+222,Refrigerator,Home Appliances,Samsung,612.33,716.47
+223,Washing Machine,Home Appliances,Whirlpool,656.28,820.77
+224,Washing Machine,Home Appliances,Whirlpool,49.77,55.14
+225,Sneakers,Footwear,Puma,349.22,403.32
+226,Cooking Oil,Grocery,Saffola,848.75,1208.6
+227,Jeans,Clothing,Zara,976.25,1151.68
+228,Sandals,Footwear,Puma,465.04,615.71
+229,Jeans,Clothing,Zara,883.19,1084.93
+230,Smartphone,Electronics,Lenovo,406.98,534.28
+231,Laptop,Electronics,Apple,505.82,589.19
+232,Refrigerator,Home Appliances,LG,573.28,717.49
+233,Laptop,Electronics,Samsung,692.06,877.78
+234,Sneakers,Footwear,Nike,624.48,845.25
+235,Jeans,Clothing,Zara,445.84,593.79
+236,Washing Machine,Home Appliances,Samsung,602.29,831.38
+237,Washing Machine,Home Appliances,LG,95.52,127.24
+238,T-shirt,Clothing,Levi's,639.87,868.66
+239,Cooking Oil,Grocery,Tata,272.07,316.95
+240,Laptop,Electronics,Dell,450.19,510.55
+241,Jeans,Clothing,Uniqlo,935.08,1347.12
+242,Rice,Grocery,Tata,558.85,705.46
+243,Rice,Grocery,Fortune,548.06,805.86
+244,Refrigerator,Home Appliances,Samsung,515.89,717.42
+245,Rice,Grocery,Aashirvaad,405.74,498.42
+246,Rice,Grocery,Tata,721.29,1030.95
+247,Sandals,Footwear,Nike,122.08,154.33
+248,T-shirt,Clothing,Levi's,473.35,677.33
+249,Cooking Oil,Grocery,Fortune,204.64,260.44
+250,Washing Machine,Home Appliances,Whirlpool,753.51,967.23
+251,T-shirt,Clothing,Zara,608.68,788.19
+252,Refrigerator,Home Appliances,Samsung,698.14,997.38
+253,Sandals,Footwear,Puma,508.13,587.81
+254,Rice,Grocery,Tata,805.57,920.88
+255,Jeans,Clothing,H&M,217.73,315.57
+256,Sandals,Footwear,Adidas,459.46,576.92
+257,Refrigerator,Home Appliances,Bosch,221.58,308.89
+258,Rice,Grocery,Fortune,93.0,116.45
+259,Laptop,Electronics,Apple,310.82,342.02
+260,Rice,Grocery,Fortune,784.6,901.38
+261,Smartphone,Electronics,Apple,599.97,679.47
+262,Rice,Grocery,Tata,431.21,553.45
+263,Laptop,Electronics,Apple,946.37,1143.45
+264,Smartphone,Electronics,Samsung,728.4,920.36
+265,Sneakers,Footwear,Reebok,110.59,154.74
+266,Refrigerator,Home Appliances,Samsung,169.49,236.93
+267,Sandals,Footwear,Reebok,508.69,601.03
+268,Jeans,Clothing,Uniqlo,880.4,1283.99
+269,Jeans,Clothing,Zara,551.13,673.59
+270,Rice,Grocery,Tata,732.3,1054.88
+271,Washing Machine,Home Appliances,Bosch,749.48,999.63
+272,Smartphone,Electronics,Samsung,792.07,1187.19
+273,Sneakers,Footwear,Adidas,245.87,320.26
+274,Jeans,Clothing,Uniqlo,795.24,1190.31
+275,Rice,Grocery,Tata,63.26,82.73
+276,Smartphone,Electronics,Lenovo,661.52,758.03
+277,Washing Machine,Home Appliances,Whirlpool,299.6,393.66
+278,T-shirt,Clothing,Zara,502.58,586.11
+279,Washing Machine,Home Appliances,Whirlpool,962.47,1067.4
+280,Cooking Oil,Grocery,Tata,671.22,748.69
+281,Washing Machine,Home Appliances,Bosch,309.68,405.07
+282,Rice,Grocery,Fortune,12.6,18.17
+283,Washing Machine,Home Appliances,Whirlpool,838.25,1126.66
+284,Rice,Grocery,Saffola,281.94,419.29
+285,Smartphone,Electronics,Dell,990.19,1324.27
+286,T-shirt,Clothing,Levi's,959.3,1357.21
+287,Jeans,Clothing,Levi's,539.72,743.47
+288,Rice,Grocery,Tata,113.47,126.14
+289,Laptop,Electronics,Samsung,36.1,51.56
+290,Smartphone,Electronics,Dell,61.73,70.85
+291,T-shirt,Clothing,H&M,317.76,472.19
+292,Rice,Grocery,Saffola,106.46,139.65
+293,Refrigerator,Home Appliances,LG,805.08,1135.73
+294,Refrigerator,Home Appliances,Samsung,757.1,888.46
+295,Laptop,Electronics,Apple,918.27,1326.66
+296,Cooking Oil,Grocery,Saffola,396.93,543.7
+297,Smartphone,Electronics,Dell,952.96,1157.69
+298,Rice,Grocery,Tata,650.34,886.47
+299,Washing Machine,Home Appliances,Samsung,263.25,328.32
+300,T-shirt,Clothing,Zara,376.64,458.29
+301,Laptop,Electronics,Apple,227.75,254.73
+302,Jeans,Clothing,H&M,364.33,418.08
+303,Washing Machine,Home Appliances,Bosch,746.27,903.0
+304,Cooking Oil,Grocery,Tata,846.52,1217.82
+305,Sneakers,Footwear,Puma,385.92,559.77
+306,Rice,Grocery,Aashirvaad,200.13,243.45
+307,Sneakers,Footwear,Puma,412.37,467.04
+308,Refrigerator,Home Appliances,Samsung,732.35,868.49
+309,Cooking Oil,Grocery,Fortune,271.6,389.29
+310,T-shirt,Clothing,H&M,620.5,812.56
+311,Sandals,Footwear,Adidas,920.39,1336.15
+312,Laptop,Electronics,Dell,495.05,674.01
+313,Sneakers,Footwear,Adidas,371.65,506.94
+314,T-shirt,Clothing,Zara,790.99,991.52
+315,Washing Machine,Home Appliances,Whirlpool,131.79,163.29
+316,Sandals,Footwear,Adidas,881.35,1152.05
+317,Sneakers,Footwear,Nike,859.75,990.01
+318,Refrigerator,Home Appliances,Whirlpool,789.83,1084.8
+319,Sandals,Footwear,Nike,429.28,491.85
+320,T-shirt,Clothing,Zara,539.87,705.61
+321,Sandals,Footwear,Nike,508.47,563.59
+322,Jeans,Clothing,H&M,503.18,618.52
+323,Sneakers,Footwear,Adidas,273.85,375.22
+324,Cooking Oil,Grocery,Tata,865.29,1070.03
+325,T-shirt,Clothing,H&M,700.22,832.54
+326,T-shirt,Clothing,H&M,411.49,584.52
+327,Smartphone,Electronics,Samsung,883.96,1255.03
+328,Washing Machine,Home Appliances,Whirlpool,461.96,539.52
+329,Cooking Oil,Grocery,Saffola,644.21,826.75
+330,T-shirt,Clothing,H&M,660.16,925.34
+331,Smartphone,Electronics,Apple,778.33,967.11
+332,Sandals,Footwear,Adidas,666.35,768.16
+333,Sandals,Footwear,Reebok,737.31,1092.66
+334,Washing Machine,Home Appliances,LG,794.48,1046.1
+335,Rice,Grocery,Tata,638.16,703.14
+336,Rice,Grocery,Fortune,106.51,155.9
+337,Jeans,Clothing,Uniqlo,181.78,265.15
+338,Washing Machine,Home Appliances,Samsung,604.63,670.13
+339,Rice,Grocery,Fortune,471.32,538.06
+340,Refrigerator,Home Appliances,LG,432.48,582.2
+341,Washing Machine,Home Appliances,Samsung,302.65,366.88
+342,T-shirt,Clothing,H&M,358.79,529.09
+343,Sneakers,Footwear,Adidas,762.33,1098.9
+344,Smartphone,Electronics,Apple,751.6,927.22
+345,Refrigerator,Home Appliances,Bosch,460.75,585.26
+346,Jeans,Clothing,Zara,659.45,956.67
+347,Rice,Grocery,Tata,773.41,997.79
+348,Smartphone,Electronics,Dell,830.01,972.48
+349,Laptop,Electronics,Lenovo,761.82,917.59
+350,Laptop,Electronics,Apple,771.19,889.84
+351,Washing Machine,Home Appliances,Whirlpool,731.3,964.71
+352,T-shirt,Clothing,H&M,917.6,1111.12
+353,T-shirt,Clothing,H&M,325.73,429.91
+354,Cooking Oil,Grocery,Saffola,775.08,886.47
+355,Jeans,Clothing,H&M,988.14,1100.81
+356,Jeans,Clothing,H&M,452.8,543.31
+357,Washing Machine,Home Appliances,Bosch,75.32,103.14
+358,Sneakers,Footwear,Adidas,253.41,305.27
+359,Smartphone,Electronics,Apple,92.11,137.74
+360,Washing Machine,Home Appliances,LG,514.91,712.18
+361,Sandals,Footwear,Nike,802.17,1038.88
+362,Jeans,Clothing,H&M,232.03,288.59
+363,Laptop,Electronics,Apple,885.38,1322.13
+364,T-shirt,Clothing,Levi's,71.59,96.39
+365,Sandals,Footwear,Reebok,84.4,124.49
+366,Rice,Grocery,Aashirvaad,150.66,211.87
+367,Laptop,Electronics,Lenovo,594.59,824.04
+368,T-shirt,Clothing,Zara,912.65,1299.83
+369,Refrigerator,Home Appliances,Samsung,664.88,771.8
+370,Sneakers,Footwear,Reebok,31.29,36.81
+371,Washing Machine,Home Appliances,Whirlpool,63.48,73.08
+372,Laptop,Electronics,Samsung,416.81,507.51
+373,Washing Machine,Home Appliances,LG,672.2,744.86
+374,Laptop,Electronics,Samsung,105.44,143.07
+375,Jeans,Clothing,Levi's,752.06,1065.86
+376,Laptop,Electronics,Dell,24.83,33.12
+377,Sneakers,Footwear,Reebok,792.3,1024.81
+378,T-shirt,Clothing,Levi's,861.02,1211.81
+379,Sneakers,Footwear,Puma,782.95,1087.21
+380,Sandals,Footwear,Reebok,235.04,343.77
+381,Cooking Oil,Grocery,Fortune,549.32,770.99
+382,Cooking Oil,Grocery,Saffola,107.31,134.25
+383,Jeans,Clothing,Uniqlo,132.21,195.67
+384,Sandals,Footwear,Adidas,585.61,785.06
+385,Cooking Oil,Grocery,Aashirvaad,312.19,435.24
+386,T-shirt,Clothing,Uniqlo,545.03,772.84
+387,Sneakers,Footwear,Adidas,404.88,586.87
+388,Sneakers,Footwear,Puma,219.4,248.67
+389,Jeans,Clothing,H&M,419.7,502.38
+390,Smartphone,Electronics,Dell,130.96,148.89
+391,Smartphone,Electronics,Dell,733.41,906.95
+392,T-shirt,Clothing,Levi's,329.34,375.22
+393,Jeans,Clothing,Zara,188.27,247.98
+394,Refrigerator,Home Appliances,Samsung,675.59,998.56
+395,Cooking Oil,Grocery,Aashirvaad,685.25,898.56
+396,Laptop,Electronics,Dell,723.23,1070.34
+397,T-shirt,Clothing,Levi's,265.28,384.1
+398,Refrigerator,Home Appliances,Samsung,813.99,984.02
+399,Cooking Oil,Grocery,Saffola,14.03,17.3
+400,Refrigerator,Home Appliances,Samsung,218.17,312.43
+401,Rice,Grocery,Saffola,129.35,190.71
+402,Jeans,Clothing,Levi's,711.34,841.77
+403,Sneakers,Footwear,Puma,920.41,1228.98
+404,T-shirt,Clothing,Levi's,900.21,1016.51
+405,Refrigerator,Home Appliances,Whirlpool,42.07,47.24
+406,Laptop,Electronics,Dell,84.13,109.84
+407,Sneakers,Footwear,Adidas,513.58,756.83
+408,Sandals,Footwear,Nike,589.76,719.77
+409,Washing Machine,Home Appliances,Bosch,904.9,1219.43
+410,Sneakers,Footwear,Puma,728.41,836.99
+411,Jeans,Clothing,Uniqlo,236.86,276.89
+412,Cooking Oil,Grocery,Tata,36.72,50.78
+413,Sneakers,Footwear,Nike,49.09,60.66
+414,Washing Machine,Home Appliances,Samsung,346.79,446.99
+415,Sneakers,Footwear,Reebok,205.66,297.24
+416,Rice,Grocery,Tata,653.05,720.93
+417,T-shirt,Clothing,Zara,362.01,462.13
+418,Sandals,Footwear,Puma,987.01,1122.23
+419,Smartphone,Electronics,Apple,359.74,526.53
+420,Refrigerator,Home Appliances,LG,58.42,72.29
+421,Sneakers,Footwear,Reebok,851.67,1080.72
+422,Sneakers,Footwear,Puma,626.3,791.42
+423,Cooking Oil,Grocery,Aashirvaad,267.82,333.38
+424,Rice,Grocery,Aashirvaad,388.95,430.87
+425,Sandals,Footwear,Adidas,191.86,251.53
+426,Cooking Oil,Grocery,Aashirvaad,550.27,815.57
+427,Rice,Grocery,Saffola,554.79,781.4
+428,Laptop,Electronics,Apple,889.82,1199.6
+429,Jeans,Clothing,Zara,101.06,119.99
+430,Refrigerator,Home Appliances,Samsung,43.55,61.46
+431,T-shirt,Clothing,Levi's,164.2,218.19
+432,Sandals,Footwear,Adidas,721.6,837.38
+433,Washing Machine,Home Appliances,LG,119.57,138.15
+434,Cooking Oil,Grocery,Fortune,646.08,833.76
+435,Sneakers,Footwear,Reebok,738.86,1014.56
+436,Rice,Grocery,Fortune,266.09,365.38
+437,Smartphone,Electronics,Dell,241.17,345.9
+438,Washing Machine,Home Appliances,Samsung,484.77,578.96
+439,Sneakers,Footwear,Puma,512.29,579.05
+440,Refrigerator,Home Appliances,Bosch,682.12,870.84
+441,Jeans,Clothing,H&M,305.52,361.04
+442,Washing Machine,Home Appliances,Bosch,985.96,1250.7
+443,Laptop,Electronics,Apple,594.02,823.93
+444,Refrigerator,Home Appliances,Whirlpool,222.26,274.62
+445,Laptop,Electronics,Lenovo,786.23,962.62
+446,Smartphone,Electronics,Lenovo,192.61,213.22
+447,Cooking Oil,Grocery,Aashirvaad,579.07,660.33
+448,Jeans,Clothing,H&M,543.14,715.6
+449,Sandals,Footwear,Nike,451.29,530.43
+450,Washing Machine,Home Appliances,Bosch,186.71,267.36
+451,Refrigerator,Home Appliances,Whirlpool,243.34,314.34
+452,T-shirt,Clothing,H&M,892.21,1065.8
+453,Laptop,Electronics,Dell,914.22,1131.67
+454,Sandals,Footwear,Reebok,773.65,1144.67
+455,Refrigerator,Home Appliances,Samsung,773.92,869.99
+456,Washing Machine,Home Appliances,LG,37.68,48.37
+457,Smartphone,Electronics,Apple,27.88,33.87
+458,Refrigerator,Home Appliances,Whirlpool,67.16,96.76
+459,Refrigerator,Home Appliances,Samsung,716.57,850.98
+460,Sneakers,Footwear,Nike,528.85,624.71
+461,Smartphone,Electronics,Apple,523.13,698.19
+462,Sneakers,Footwear,Reebok,534.43,635.8
+463,Laptop,Electronics,Apple,271.17,351.66
+464,Sneakers,Footwear,Nike,703.64,791.82
+465,Laptop,Electronics,Apple,825.19,911.64
+466,T-shirt,Clothing,Zara,690.92,925.78
+467,Cooking Oil,Grocery,Saffola,995.77,1331.74
+468,Laptop,Electronics,Samsung,264.85,361.73
+469,Rice,Grocery,Aashirvaad,452.26,517.02
+470,Smartphone,Electronics,Apple,148.03,175.39
+471,Laptop,Electronics,Samsung,572.87,803.72
+472,Sneakers,Footwear,Puma,74.68,85.82
+473,Cooking Oil,Grocery,Tata,83.28,107.45
+474,Smartphone,Electronics,Dell,575.27,644.29
+475,Washing Machine,Home Appliances,Bosch,232.47,323.56
+476,Refrigerator,Home Appliances,Samsung,609.97,770.33
+477,Rice,Grocery,Saffola,34.34,50.8
+478,Washing Machine,Home Appliances,LG,677.54,949.38
+479,Rice,Grocery,Aashirvaad,219.08,245.83
+480,Rice,Grocery,Fortune,501.74,622.25
+481,Laptop,Electronics,Dell,227.97,310.56
+482,Laptop,Electronics,Lenovo,736.42,966.44
+483,Smartphone,Electronics,Samsung,364.0,544.77
+484,Cooking Oil,Grocery,Fortune,48.38,55.46
+485,T-shirt,Clothing,Zara,76.26,108.41
+486,Cooking Oil,Grocery,Aashirvaad,645.7,851.12
+487,Smartphone,Electronics,Samsung,211.7,267.04
+488,Refrigerator,Home Appliances,Whirlpool,666.18,900.42
+489,Sneakers,Footwear,Reebok,288.27,361.3
+490,Laptop,Electronics,Apple,422.82,563.01
+491,Laptop,Electronics,Samsung,645.96,879.54
+492,Jeans,Clothing,H&M,374.19,547.49
+493,Cooking Oil,Grocery,Saffola,248.21,360.17
+494,Washing Machine,Home Appliances,Whirlpool,867.4,1002.09
+495,Laptop,Electronics,Samsung,739.52,944.47
+496,Washing Machine,Home Appliances,LG,75.81,85.78
+497,Washing Machine,Home Appliances,Bosch,817.03,1173.85
+498,Cooking Oil,Grocery,Saffola,973.58,1099.79
+499,Refrigerator,Home Appliances,Samsung,919.25,1260.58
+500,Laptop,Electronics,Dell,334.83,444.34
+501,Laptop,Electronics,Apple,797.82,1149.62
+502,Laptop,Electronics,Apple,669.58,971.75
+503,Washing Machine,Home Appliances,Whirlpool,316.55,424.75
+504,T-shirt,Clothing,H&M,116.23,168.73
+505,Washing Machine,Home Appliances,Whirlpool,494.56,700.26
+506,Jeans,Clothing,Zara,856.78,1168.33
+507,Cooking Oil,Grocery,Fortune,846.15,1070.78
+508,T-shirt,Clothing,Uniqlo,937.47,1143.14
+509,T-shirt,Clothing,H&M,329.56,490.0
+510,Smartphone,Electronics,Lenovo,975.75,1404.21
+511,T-shirt,Clothing,Levi's,839.89,1046.4
+512,Smartphone,Electronics,Apple,689.23,959.36
+513,Laptop,Electronics,Apple,72.0,107.14
+514,Jeans,Clothing,Levi's,483.75,709.18
+515,Jeans,Clothing,Levi's,614.3,882.63
+516,Rice,Grocery,Saffola,35.67,39.29
+517,T-shirt,Clothing,Levi's,158.46,202.97
+518,Jeans,Clothing,H&M,634.61,845.4
+519,T-shirt,Clothing,H&M,453.01,619.46
+520,Sandals,Footwear,Nike,691.17,1033.74
+521,Sneakers,Footwear,Reebok,559.54,631.1
+522,Rice,Grocery,Tata,412.87,464.13
+523,Cooking Oil,Grocery,Saffola,292.07,431.2
+524,T-shirt,Clothing,Zara,85.68,110.15
+525,T-shirt,Clothing,Uniqlo,14.54,18.3
+526,Washing Machine,Home Appliances,Bosch,136.39,186.84
+527,Jeans,Clothing,Levi's,479.0,549.25
+528,Laptop,Electronics,Samsung,416.47,476.93
+529,Refrigerator,Home Appliances,Whirlpool,893.45,1262.72
+530,Sandals,Footwear,Puma,34.29,40.89
+531,Smartphone,Electronics,Dell,712.35,925.04
+532,T-shirt,Clothing,Uniqlo,562.58,730.04
+533,Sandals,Footwear,Reebok,462.95,558.32
+534,Rice,Grocery,Aashirvaad,712.52,822.91
+535,Laptop,Electronics,Apple,56.29,62.07
+536,Cooking Oil,Grocery,Saffola,408.37,467.08
+537,Smartphone,Electronics,Dell,418.35,504.94
+538,Smartphone,Electronics,Lenovo,823.63,1099.7
+539,T-shirt,Clothing,Levi's,487.52,578.17
+540,Rice,Grocery,Tata,922.41,1229.48
+541,Refrigerator,Home Appliances,Whirlpool,70.26,85.05
+542,Laptop,Electronics,Apple,314.99,455.76
+543,Jeans,Clothing,H&M,527.62,692.15
+544,Smartphone,Electronics,Dell,539.44,596.13
+545,Jeans,Clothing,Uniqlo,30.16,36.96
+546,Sneakers,Footwear,Reebok,264.41,364.67
+547,T-shirt,Clothing,Zara,814.86,1004.36
+548,Washing Machine,Home Appliances,Bosch,690.34,789.45
+549,T-shirt,Clothing,Uniqlo,934.86,1147.28
+550,Refrigerator,Home Appliances,Bosch,503.53,643.11
+551,Refrigerator,Home Appliances,Bosch,474.75,589.99
+552,Washing Machine,Home Appliances,Bosch,972.65,1324.23
+553,Washing Machine,Home Appliances,LG,411.67,471.04
+554,Jeans,Clothing,Uniqlo,689.88,1019.35
+555,Sneakers,Footwear,Puma,407.25,488.76
+556,Rice,Grocery,Saffola,766.32,1014.18
+557,Laptop,Electronics,Samsung,177.76,196.16
+558,Washing Machine,Home Appliances,Whirlpool,940.41,1088.42
+559,Rice,Grocery,Fortune,98.0,135.23
+560,Refrigerator,Home Appliances,Bosch,909.08,1308.84
+561,Jeans,Clothing,H&M,624.82,816.68
+562,Rice,Grocery,Tata,905.06,1207.66
+563,Laptop,Electronics,Apple,616.34,893.92
+564,Washing Machine,Home Appliances,Bosch,85.41,114.96
+565,Sandals,Footwear,Puma,472.72,681.62
+566,T-shirt,Clothing,Levi's,217.6,307.59
+567,Smartphone,Electronics,Dell,431.03,580.83
+568,Sneakers,Footwear,Reebok,577.63,728.87
+569,Sneakers,Footwear,Nike,172.72,198.79
+570,Rice,Grocery,Aashirvaad,669.34,893.57
+571,Refrigerator,Home Appliances,LG,664.26,760.02
+572,Laptop,Electronics,Samsung,474.53,552.6
+573,Rice,Grocery,Aashirvaad,610.2,813.1
+574,Cooking Oil,Grocery,Aashirvaad,391.98,472.0
+575,Washing Machine,Home Appliances,LG,992.09,1270.85
+576,Jeans,Clothing,Zara,890.09,1137.65
+577,Jeans,Clothing,Levi's,175.85,261.1
+578,Cooking Oil,Grocery,Aashirvaad,72.47,107.17
+579,Sneakers,Footwear,Reebok,606.66,707.05
+580,Sneakers,Footwear,Adidas,814.35,1002.69
+581,Refrigerator,Home Appliances,LG,499.59,748.62
+582,Laptop,Electronics,Lenovo,323.99,427.03
+583,Cooking Oil,Grocery,Saffola,213.69,302.13
+584,Washing Machine,Home Appliances,Samsung,639.07,876.49
+585,Cooking Oil,Grocery,Tata,870.2,984.51
+586,Jeans,Clothing,Zara,158.71,213.18
+587,Sneakers,Footwear,Adidas,827.48,1178.14
+588,Washing Machine,Home Appliances,Whirlpool,895.37,1328.56
+589,Jeans,Clothing,Levi's,554.72,694.52
+590,Sandals,Footwear,Nike,16.35,22.04
+591,Washing Machine,Home Appliances,Samsung,305.98,429.46
+592,Jeans,Clothing,Uniqlo,387.27,484.74
+593,Cooking Oil,Grocery,Aashirvaad,512.83,569.14
+594,Cooking Oil,Grocery,Fortune,668.98,777.35
+595,T-shirt,Clothing,H&M,731.18,1046.53
+596,Sneakers,Footwear,Reebok,666.76,972.14
+597,Rice,Grocery,Fortune,689.66,889.48
+598,Jeans,Clothing,Zara,922.47,1370.25
+599,Cooking Oil,Grocery,Aashirvaad,752.1,1083.71
+600,Refrigerator,Home Appliances,Whirlpool,853.99,1016.3
+601,Washing Machine,Home Appliances,Whirlpool,773.2,941.13
+602,Rice,Grocery,Fortune,675.7,793.68
+603,Sandals,Footwear,Adidas,351.39,463.92
+604,T-shirt,Clothing,Zara,128.11,166.47
+605,Smartphone,Electronics,Apple,290.29,365.9
+606,Jeans,Clothing,Levi's,185.3,217.34
+607,T-shirt,Clothing,Zara,31.94,44.68
+608,Rice,Grocery,Tata,574.38,749.07
+609,Washing Machine,Home Appliances,LG,570.19,649.44
+610,Washing Machine,Home Appliances,Bosch,280.95,359.55
+611,T-shirt,Clothing,H&M,995.16,1288.27
+612,Sandals,Footwear,Puma,36.66,44.0
+613,Smartphone,Electronics,Dell,356.43,392.63
+614,Rice,Grocery,Aashirvaad,795.03,1110.21
+615,Sandals,Footwear,Reebok,989.01,1220.83
+616,Smartphone,Electronics,Apple,643.56,708.37
+617,Refrigerator,Home Appliances,LG,345.49,466.32
+618,Rice,Grocery,Saffola,686.63,950.54
+619,Laptop,Electronics,Dell,244.89,293.17
+620,Laptop,Electronics,Lenovo,542.07,715.14
+621,T-shirt,Clothing,Levi's,487.59,543.15
+622,Smartphone,Electronics,Dell,875.22,1138.29
+623,Refrigerator,Home Appliances,Samsung,208.58,278.65
+624,Sandals,Footwear,Adidas,174.76,195.33
+625,Rice,Grocery,Tata,528.22,614.84
+626,Cooking Oil,Grocery,Tata,977.92,1382.88
+627,Jeans,Clothing,Zara,664.71,828.56
+628,Rice,Grocery,Saffola,811.43,1078.33
+629,Rice,Grocery,Saffola,610.42,727.78
+630,T-shirt,Clothing,Uniqlo,762.76,839.64
+631,Refrigerator,Home Appliances,LG,434.07,581.12
+632,Rice,Grocery,Aashirvaad,93.74,120.8
+633,Refrigerator,Home Appliances,LG,233.51,261.53
+634,Washing Machine,Home Appliances,Bosch,59.86,72.38
+635,Smartphone,Electronics,Apple,367.43,415.82
+636,Refrigerator,Home Appliances,LG,216.01,304.68
+637,Sneakers,Footwear,Reebok,38.8,53.24
+638,Cooking Oil,Grocery,Aashirvaad,398.78,479.7
+639,T-shirt,Clothing,Levi's,926.84,1357.63
+640,Sneakers,Footwear,Reebok,905.01,1282.11
+641,Rice,Grocery,Tata,257.28,361.76
+642,Laptop,Electronics,Lenovo,42.02,50.46
+643,Jeans,Clothing,Zara,106.25,120.17
+644,Rice,Grocery,Aashirvaad,580.15,692.04
+645,Smartphone,Electronics,Dell,632.33,830.54
+646,Smartphone,Electronics,Lenovo,410.92,540.21
+647,T-shirt,Clothing,Levi's,818.05,1023.69
+648,Cooking Oil,Grocery,Tata,161.96,182.92
+649,Sneakers,Footwear,Reebok,699.88,1037.83
+650,Jeans,Clothing,Levi's,327.7,399.39
+651,Cooking Oil,Grocery,Fortune,246.49,302.06
+652,Smartphone,Electronics,Apple,166.35,197.45
+653,Laptop,Electronics,Apple,852.01,1267.43
+654,Laptop,Electronics,Dell,416.58,476.16
+655,Laptop,Electronics,Dell,203.06,248.85
+656,Smartphone,Electronics,Dell,24.97,31.84
+657,Laptop,Electronics,Dell,60.16,85.99
+658,Refrigerator,Home Appliances,Whirlpool,51.73,62.8
+659,Smartphone,Electronics,Apple,215.46,260.38
+660,Refrigerator,Home Appliances,Bosch,370.94,431.36
+661,Laptop,Electronics,Apple,257.18,305.88
+662,Cooking Oil,Grocery,Aashirvaad,798.96,941.81
+663,Smartphone,Electronics,Lenovo,444.64,563.35
+664,Refrigerator,Home Appliances,Whirlpool,302.18,361.57
+665,Sandals,Footwear,Adidas,305.33,370.04
+666,Laptop,Electronics,Samsung,415.87,518.32
+667,Cooking Oil,Grocery,Aashirvaad,287.51,407.57
+668,T-shirt,Clothing,Zara,938.49,1316.08
+669,Rice,Grocery,Aashirvaad,964.25,1350.84
+670,Sneakers,Footwear,Adidas,148.79,222.31
+671,Washing Machine,Home Appliances,LG,461.83,681.99
+672,Refrigerator,Home Appliances,LG,370.55,516.02
+673,Cooking Oil,Grocery,Aashirvaad,529.34,781.47
+674,Cooking Oil,Grocery,Fortune,563.53,792.39
+675,Laptop,Electronics,Lenovo,609.97,855.43
+676,Cooking Oil,Grocery,Saffola,110.44,159.35
+677,Refrigerator,Home Appliances,Whirlpool,858.62,1189.51
+678,Refrigerator,Home Appliances,Samsung,946.91,1107.39
+679,Jeans,Clothing,Levi's,272.02,303.44
+680,Jeans,Clothing,H&M,324.76,481.64
+681,Sandals,Footwear,Nike,587.37,745.91
+682,Rice,Grocery,Fortune,878.49,1058.67
+683,Sandals,Footwear,Adidas,30.87,34.73
+684,T-shirt,Clothing,Uniqlo,519.05,572.24
+685,Rice,Grocery,Tata,945.14,1315.8
+686,T-shirt,Clothing,Zara,126.28,156.9
+687,Sneakers,Footwear,Adidas,472.51,614.82
+688,Jeans,Clothing,Uniqlo,239.73,310.4
+689,Sandals,Footwear,Reebok,185.1,238.71
+690,Smartphone,Electronics,Samsung,210.71,261.35
+691,Jeans,Clothing,Zara,965.66,1253.55
+692,Sandals,Footwear,Nike,47.12,60.88
+693,Cooking Oil,Grocery,Fortune,265.27,331.98
+694,T-shirt,Clothing,Levi's,27.63,31.83
+695,T-shirt,Clothing,H&M,282.6,336.31
+696,Smartphone,Electronics,Samsung,41.28,57.44
+697,Sneakers,Footwear,Reebok,166.66,207.38
+698,Cooking Oil,Grocery,Tata,514.74,674.74
+699,Laptop,Electronics,Dell,37.6,43.24
+700,Cooking Oil,Grocery,Saffola,888.24,1211.36
+701,T-shirt,Clothing,Zara,560.35,684.47
+702,Cooking Oil,Grocery,Fortune,919.23,1134.44
+703,Laptop,Electronics,Lenovo,651.37,790.61
+704,Smartphone,Electronics,Dell,846.21,1122.03
+705,Jeans,Clothing,Zara,124.06,146.91
+706,Washing Machine,Home Appliances,Samsung,596.72,876.48
+707,Rice,Grocery,Aashirvaad,993.92,1338.16
+708,T-shirt,Clothing,Levi's,970.92,1227.18
+709,Rice,Grocery,Saffola,632.69,934.06
+710,Smartphone,Electronics,Samsung,309.71,451.4
+711,Smartphone,Electronics,Samsung,934.29,1153.15
+712,T-shirt,Clothing,H&M,360.08,536.79
+713,Washing Machine,Home Appliances,Samsung,311.1,381.36
+714,Washing Machine,Home Appliances,LG,926.22,1385.78
+715,Washing Machine,Home Appliances,Samsung,941.25,1066.23
+716,Rice,Grocery,Fortune,753.76,993.51
+717,Cooking Oil,Grocery,Fortune,926.43,1263.43
+718,Sneakers,Footwear,Puma,621.16,706.95
+719,Cooking Oil,Grocery,Fortune,821.32,1091.75
+720,T-shirt,Clothing,Uniqlo,707.28,996.51
+721,Jeans,Clothing,Levi's,253.88,324.71
+722,T-shirt,Clothing,Zara,998.9,1478.3
+723,Washing Machine,Home Appliances,Whirlpool,356.51,420.09
+724,Jeans,Clothing,Levi's,246.37,350.08
+725,Sandals,Footwear,Reebok,486.41,537.43
+726,T-shirt,Clothing,Uniqlo,786.26,892.29
+727,Cooking Oil,Grocery,Fortune,689.34,1029.81
+728,Laptop,Electronics,Lenovo,502.15,723.35
+729,Jeans,Clothing,Zara,198.99,221.27
+730,Sneakers,Footwear,Puma,672.82,967.27
+731,Cooking Oil,Grocery,Saffola,121.84,173.34
+732,Rice,Grocery,Aashirvaad,820.78,1224.35
+733,Cooking Oil,Grocery,Aashirvaad,438.55,509.39
+734,Cooking Oil,Grocery,Saffola,972.16,1108.87
+735,Smartphone,Electronics,Samsung,599.22,685.34
+736,Laptop,Electronics,Dell,137.54,203.72
+737,Jeans,Clothing,Uniqlo,627.04,876.57
+738,T-shirt,Clothing,Levi's,204.52,257.06
+739,Sandals,Footwear,Adidas,737.92,978.58
+740,Laptop,Electronics,Lenovo,587.69,867.34
+741,Smartphone,Electronics,Lenovo,414.21,543.01
+742,T-shirt,Clothing,Uniqlo,151.38,184.69
+743,Washing Machine,Home Appliances,Samsung,355.45,479.95
+744,Washing Machine,Home Appliances,Samsung,670.41,845.84
+745,T-shirt,Clothing,Zara,731.73,831.66
+746,Sandals,Footwear,Reebok,56.77,85.1
+747,Jeans,Clothing,Zara,659.89,929.84
+748,Jeans,Clothing,H&M,258.68,368.32
+749,Sneakers,Footwear,Reebok,220.68,327.22
+750,Washing Machine,Home Appliances,Samsung,292.43,430.51
+751,Refrigerator,Home Appliances,Bosch,681.93,843.47
+752,Refrigerator,Home Appliances,Whirlpool,454.61,562.87
+753,T-shirt,Clothing,Uniqlo,851.55,1192.07
+754,Laptop,Electronics,Dell,156.55,223.02
+755,Washing Machine,Home Appliances,LG,281.83,383.31
+756,Refrigerator,Home Appliances,Samsung,617.96,815.81
+757,Sneakers,Footwear,Nike,327.96,456.11
+758,Laptop,Electronics,Apple,72.14,100.2
+759,Rice,Grocery,Fortune,630.88,800.78
+760,Rice,Grocery,Fortune,476.0,671.6
+761,Jeans,Clothing,Zara,854.97,1114.85
+762,Sneakers,Footwear,Adidas,368.07,476.03
+763,T-shirt,Clothing,Uniqlo,626.46,787.77
+764,Smartphone,Electronics,Apple,462.81,639.91
+765,Refrigerator,Home Appliances,Whirlpool,83.07,101.88
+766,T-shirt,Clothing,Uniqlo,977.75,1097.72
+767,Cooking Oil,Grocery,Tata,720.83,845.28
+768,Washing Machine,Home Appliances,Samsung,219.65,317.6
+769,Sandals,Footwear,Reebok,258.88,353.54
+770,Sandals,Footwear,Adidas,707.24,911.33
+771,Refrigerator,Home Appliances,LG,412.71,556.47
+772,Jeans,Clothing,Zara,715.22,809.83
+773,Cooking Oil,Grocery,Fortune,683.67,921.7
+774,Sneakers,Footwear,Reebok,352.55,512.6
+775,Sneakers,Footwear,Adidas,676.18,950.61
+776,Laptop,Electronics,Dell,565.67,793.32
+777,Sneakers,Footwear,Adidas,689.87,1013.91
+778,Sneakers,Footwear,Puma,508.9,628.42
+779,Rice,Grocery,Aashirvaad,14.24,19.32
+780,Refrigerator,Home Appliances,Whirlpool,863.91,1132.29
+781,Smartphone,Electronics,Lenovo,720.72,1073.67
+782,Rice,Grocery,Fortune,283.26,325.22
+783,Smartphone,Electronics,Lenovo,210.65,247.36
+784,T-shirt,Clothing,H&M,933.5,1274.61
+785,Washing Machine,Home Appliances,Samsung,912.21,1227.67
+786,Sandals,Footwear,Adidas,578.3,848.88
+787,Refrigerator,Home Appliances,LG,658.93,822.18
+788,T-shirt,Clothing,Zara,451.92,604.17
+789,Sandals,Footwear,Nike,954.98,1144.5
+790,Sneakers,Footwear,Nike,91.7,111.78
+791,Sneakers,Footwear,Adidas,589.79,791.58
+792,Sneakers,Footwear,Puma,758.71,1035.46
+793,Sneakers,Footwear,Nike,884.2,1015.36
+794,Rice,Grocery,Aashirvaad,810.62,1077.02
+795,Refrigerator,Home Appliances,LG,175.89,210.45
+796,Jeans,Clothing,Levi's,689.37,961.82
+797,Smartphone,Electronics,Dell,937.69,1097.27
+798,Rice,Grocery,Aashirvaad,251.58,351.14
+799,T-shirt,Clothing,H&M,425.03,549.49
+800,T-shirt,Clothing,Zara,344.32,440.74
+801,Laptop,Electronics,Lenovo,927.92,1117.73
+802,Refrigerator,Home Appliances,Whirlpool,275.94,389.33
+803,T-shirt,Clothing,Levi's,563.34,649.28
+804,Jeans,Clothing,Levi's,717.5,810.92
+805,Cooking Oil,Grocery,Tata,701.25,930.59
+806,T-shirt,Clothing,Uniqlo,17.19,23.92
+807,Sandals,Footwear,Reebok,189.09,217.69
+808,Refrigerator,Home Appliances,LG,285.48,318.78
+809,Cooking Oil,Grocery,Aashirvaad,514.6,647.39
+810,Sandals,Footwear,Reebok,144.88,197.1
+811,T-shirt,Clothing,Zara,126.22,166.66
+812,Smartphone,Electronics,Dell,348.05,453.39
+813,Laptop,Electronics,Dell,785.3,1090.27
+814,Rice,Grocery,Saffola,498.68,602.87
+815,Rice,Grocery,Aashirvaad,415.56,562.42
+816,Sneakers,Footwear,Nike,816.17,1163.43
+817,Washing Machine,Home Appliances,Bosch,805.09,1015.78
+818,Smartphone,Electronics,Apple,752.64,977.59
+819,Cooking Oil,Grocery,Saffola,987.99,1349.7
+820,Laptop,Electronics,Samsung,236.44,283.94
+821,Sneakers,Footwear,Puma,270.37,377.59
+822,Washing Machine,Home Appliances,Samsung,19.83,22.57
+823,Cooking Oil,Grocery,Fortune,756.06,1033.37
+824,Rice,Grocery,Fortune,405.84,520.4
+825,Cooking Oil,Grocery,Tata,903.46,1258.9
+826,Jeans,Clothing,Uniqlo,205.37,277.37
+827,Rice,Grocery,Tata,540.11,682.31
+828,Refrigerator,Home Appliances,Samsung,324.57,424.45
+829,Smartphone,Electronics,Apple,230.61,261.22
+830,Sneakers,Footwear,Reebok,545.93,631.23
+831,Sandals,Footwear,Puma,516.56,770.09
+832,Sneakers,Footwear,Adidas,536.74,721.53
+833,T-shirt,Clothing,Uniqlo,775.39,927.47
+834,Cooking Oil,Grocery,Aashirvaad,531.55,609.46
+835,Laptop,Electronics,Lenovo,192.52,238.38
+836,Rice,Grocery,Fortune,583.85,679.6
+837,T-shirt,Clothing,Zara,408.82,527.04
+838,T-shirt,Clothing,Uniqlo,151.98,218.89
+839,Smartphone,Electronics,Lenovo,396.86,517.4
+840,Rice,Grocery,Tata,940.63,1040.7
+841,Jeans,Clothing,Zara,589.09,838.53
+842,Sneakers,Footwear,Puma,973.36,1234.33
+843,Sneakers,Footwear,Reebok,11.53,15.43
+844,Sneakers,Footwear,Reebok,926.02,1219.54
+845,Jeans,Clothing,Zara,503.78,563.72
+846,T-shirt,Clothing,Uniqlo,86.96,96.29
+847,Sandals,Footwear,Nike,294.64,419.08
+848,Jeans,Clothing,Zara,560.15,787.63
+849,Laptop,Electronics,Lenovo,106.51,131.02
+850,Sneakers,Footwear,Puma,20.45,26.03
+851,Refrigerator,Home Appliances,Samsung,477.22,596.6
+852,Laptop,Electronics,Apple,501.62,723.43
+853,T-shirt,Clothing,Zara,151.48,189.11
+854,Laptop,Electronics,Lenovo,690.27,931.65
+855,Refrigerator,Home Appliances,Samsung,750.71,1007.51
+856,Refrigerator,Home Appliances,Whirlpool,163.79,201.79
+857,Washing Machine,Home Appliances,Whirlpool,739.79,926.12
+858,Jeans,Clothing,Levi's,361.03,487.41
+859,Sandals,Footwear,Reebok,927.11,1155.63
+860,Laptop,Electronics,Lenovo,599.61,719.74
+861,Jeans,Clothing,Uniqlo,557.07,678.59
+862,Rice,Grocery,Aashirvaad,238.13,279.56
+863,T-shirt,Clothing,Levi's,724.47,899.58
+864,T-shirt,Clothing,Uniqlo,822.45,1059.46
+865,Jeans,Clothing,Levi's,672.57,945.73
+866,Sandals,Footwear,Nike,228.9,282.27
+867,Jeans,Clothing,Levi's,343.92,458.34
+868,Rice,Grocery,Tata,487.69,580.35
+869,Refrigerator,Home Appliances,LG,316.98,462.23
+870,Smartphone,Electronics,Samsung,366.05,504.56
+871,Rice,Grocery,Aashirvaad,592.0,841.47
+872,Jeans,Clothing,H&M,512.9,689.59
+873,T-shirt,Clothing,Uniqlo,713.17,854.68
+874,Laptop,Electronics,Apple,152.83,168.29
+875,Washing Machine,Home Appliances,Whirlpool,617.2,846.68
+876,Smartphone,Electronics,Lenovo,755.04,1036.32
+877,Smartphone,Electronics,Samsung,272.12,333.48
+878,T-shirt,Clothing,Levi's,524.97,759.3
+879,Refrigerator,Home Appliances,LG,696.23,881.25
+880,Rice,Grocery,Tata,204.87,306.46
+881,Sandals,Footwear,Puma,884.1,1002.32
+882,T-shirt,Clothing,H&M,522.56,598.89
+883,Rice,Grocery,Saffola,215.16,292.7
+884,Smartphone,Electronics,Samsung,876.73,1092.54
+885,Cooking Oil,Grocery,Saffola,637.57,775.97
+886,Jeans,Clothing,Zara,741.76,897.9
+887,Rice,Grocery,Saffola,145.24,216.2
+888,Cooking Oil,Grocery,Fortune,146.69,201.36
+889,Jeans,Clothing,Uniqlo,318.44,374.12
+890,Cooking Oil,Grocery,Saffola,272.68,338.41
+891,Jeans,Clothing,Levi's,205.98,270.48
+892,T-shirt,Clothing,Levi's,483.99,607.38
+893,Jeans,Clothing,Zara,908.66,1020.51
+894,Jeans,Clothing,Levi's,276.25,391.08
+895,Cooking Oil,Grocery,Saffola,376.13,422.36
+896,Rice,Grocery,Tata,211.03,278.08
+897,Refrigerator,Home Appliances,Bosch,330.58,406.27
+898,Rice,Grocery,Tata,693.2,810.15
+899,Refrigerator,Home Appliances,Whirlpool,281.27,314.84
+900,Refrigerator,Home Appliances,LG,163.84,195.53
+901,T-shirt,Clothing,Levi's,223.06,310.04
+902,Smartphone,Electronics,Dell,671.9,976.12
+903,Refrigerator,Home Appliances,Samsung,112.51,140.61
+904,Refrigerator,Home Appliances,Samsung,294.56,430.68
+905,Smartphone,Electronics,Lenovo,136.43,198.54
+906,Washing Machine,Home Appliances,Samsung,14.26,20.99
+907,Cooking Oil,Grocery,Tata,430.15,635.63
+908,Sneakers,Footwear,Puma,592.78,822.33
+909,Jeans,Clothing,Levi's,42.5,57.63
+910,T-shirt,Clothing,H&M,928.73,1281.1
+911,Smartphone,Electronics,Samsung,25.2,31.56
+912,Washing Machine,Home Appliances,LG,737.74,856.16
+913,Refrigerator,Home Appliances,Samsung,349.58,516.74
+914,Refrigerator,Home Appliances,Whirlpool,443.69,606.25
+915,Sneakers,Footwear,Reebok,170.38,245.28
+916,Washing Machine,Home Appliances,Bosch,554.47,745.83
+917,Laptop,Electronics,Dell,543.84,706.31
+918,Sneakers,Footwear,Puma,56.24,78.33
+919,T-shirt,Clothing,Uniqlo,924.34,1239.48
+920,Washing Machine,Home Appliances,Whirlpool,830.72,938.25
+921,T-shirt,Clothing,Levi's,844.67,1009.09
+922,Cooking Oil,Grocery,Fortune,352.67,498.03
+923,Sneakers,Footwear,Puma,752.45,1067.68
+924,Laptop,Electronics,Dell,81.5,92.08
+925,Refrigerator,Home Appliances,LG,821.54,1078.86
+926,Sandals,Footwear,Nike,55.07,74.91
+927,Laptop,Electronics,Apple,579.19,666.13
+928,T-shirt,Clothing,Zara,691.54,947.63
+929,Jeans,Clothing,Levi's,987.85,1386.63
+930,Rice,Grocery,Tata,437.81,640.3
+931,Washing Machine,Home Appliances,Samsung,24.59,27.08
+932,Smartphone,Electronics,Dell,102.01,125.6
+933,Rice,Grocery,Fortune,603.88,785.75
+934,Smartphone,Electronics,Samsung,933.08,1192.96
+935,Rice,Grocery,Saffola,996.93,1477.33
+936,Jeans,Clothing,Uniqlo,980.5,1406.65
+937,Rice,Grocery,Tata,448.16,630.17
+938,Rice,Grocery,Tata,121.86,137.17
+939,Rice,Grocery,Aashirvaad,634.42,931.92
+940,Sandals,Footwear,Nike,912.48,1005.16
+941,Sandals,Footwear,Puma,387.02,572.02
+942,Rice,Grocery,Tata,742.71,820.47
+943,Sneakers,Footwear,Reebok,691.99,771.88
+944,Laptop,Electronics,Dell,673.15,888.99
+945,Washing Machine,Home Appliances,Samsung,363.17,470.36
+946,Jeans,Clothing,H&M,49.93,64.49
+947,T-shirt,Clothing,H&M,432.99,601.46
+948,Jeans,Clothing,Uniqlo,724.44,1065.71
+949,Sandals,Footwear,Puma,624.06,785.65
+950,Sneakers,Footwear,Adidas,593.51,724.45
+951,Laptop,Electronics,Dell,582.96,831.83
+952,Smartphone,Electronics,Dell,782.45,971.11
+953,Smartphone,Electronics,Apple,616.42,735.64
+954,Jeans,Clothing,Uniqlo,680.02,978.29
+955,Cooking Oil,Grocery,Saffola,443.77,646.44
+956,Smartphone,Electronics,Apple,215.43,311.55
+957,Smartphone,Electronics,Apple,740.74,992.23
+958,Washing Machine,Home Appliances,Bosch,662.53,849.72
+959,Washing Machine,Home Appliances,Whirlpool,203.57,241.3
+960,Sandals,Footwear,Nike,926.54,1283.33
+961,Sandals,Footwear,Puma,755.19,1124.31
+962,Smartphone,Electronics,Apple,978.71,1360.4
+963,Smartphone,Electronics,Lenovo,695.24,917.54
+964,Cooking Oil,Grocery,Tata,366.96,508.32
+965,Rice,Grocery,Aashirvaad,48.57,62.43
+966,Cooking Oil,Grocery,Fortune,441.6,534.01
+967,Cooking Oil,Grocery,Tata,976.91,1449.29
+968,Refrigerator,Home Appliances,Bosch,941.54,1141.29
+969,Jeans,Clothing,Uniqlo,11.8,15.81
+970,Sneakers,Footwear,Adidas,299.14,435.72
+971,Cooking Oil,Grocery,Saffola,913.36,1288.94
+972,Refrigerator,Home Appliances,Whirlpool,127.28,166.02
+973,T-shirt,Clothing,Zara,382.91,463.26
+974,Smartphone,Electronics,Apple,571.56,731.48
+975,T-shirt,Clothing,H&M,252.67,308.09
+976,Sneakers,Footwear,Puma,994.28,1116.01
+977,Rice,Grocery,Aashirvaad,813.75,972.46
+978,Jeans,Clothing,Levi's,760.57,871.02
+979,Sneakers,Footwear,Puma,98.5,117.32
+980,Sandals,Footwear,Nike,862.22,1060.47
+981,Washing Machine,Home Appliances,Samsung,142.13,192.13
+982,Refrigerator,Home Appliances,Whirlpool,755.06,837.15
+983,Washing Machine,Home Appliances,Bosch,571.85,789.23
+984,Cooking Oil,Grocery,Saffola,24.9,28.15
+985,Refrigerator,Home Appliances,Samsung,284.91,327.82
+986,Cooking Oil,Grocery,Aashirvaad,32.93,37.51
+987,Sneakers,Footwear,Puma,630.46,776.54
+988,Cooking Oil,Grocery,Fortune,63.32,87.86
+989,T-shirt,Clothing,Zara,593.25,685.56
+990,Sneakers,Footwear,Reebok,100.85,126.65
+991,Washing Machine,Home Appliances,LG,39.38,50.07
+992,Laptop,Electronics,Apple,49.97,55.63
+993,T-shirt,Clothing,Zara,952.9,1213.03
+994,Rice,Grocery,Fortune,960.72,1150.89
+995,Sneakers,Footwear,Nike,610.31,784.66
+996,Washing Machine,Home Appliances,Samsung,934.9,1253.16
+997,Jeans,Clothing,Levi's,23.36,31.57
+998,Refrigerator,Home Appliances,Samsung,352.59,469.61
+999,Washing Machine,Home Appliances,Whirlpool,79.1,100.09
+1000,Refrigerator,Home Appliances,Samsung,427.85,619.34

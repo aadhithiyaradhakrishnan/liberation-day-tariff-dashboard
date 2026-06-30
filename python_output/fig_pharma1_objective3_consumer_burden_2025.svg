@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-label="Consumer burden from pharmaceutical tariff price increases by income group">
+  <style>
+    .title { font: 700 24px Arial, sans-serif; fill: #1d2733; }
+    .subtitle { font: 400 13px Arial, sans-serif; fill: #536273; }
+    .section { font: 700 14px Arial, sans-serif; fill: #1d2733; }
+    .country { font: 700 13px Arial, sans-serif; fill: #253244; }
+    .value { font: 400 12px Arial, sans-serif; fill: #2d3b4f; }
+    .metric { font: 700 22px Arial, sans-serif; fill: #1d2733; }
+    .footnote { font: 400 11px Arial, sans-serif; fill: #748297; }
+  </style>
+  <rect width="960" height="560" fill="#ffffff"/>
+  <text x="52" y="52" class="title">Who Bears Pharmaceutical Tariff Costs?</text>
+  <text x="52" y="78" class="subtitle">Pharma1 2025 estimated drug-price pressure: +10.34%</text>
+  <text x="220" y="112" class="section">Annual drug spending</text>
+  <text x="560" y="112" class="section">Extra cost as % of income</text>
+  
+      <text x="54" y="147" class="country">Q1 (Lowest 20%)</text>
+      <rect x="220" y="128" width="150.0" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="380" y="146" class="value">$595</text>
+      <rect x="560" y="128" width="300.0" height="24" rx="4" fill="#b91c1c"/>
+      <text x="870" y="146" class="value">0.361%</text>
+
+      <text x="54" y="205" class="country">Q2</text>
+      <rect x="220" y="186" width="238.5" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="468.48739495798316" y="204" class="value">$946</text>
+      <rect x="560" y="186" width="188.4" height="24" rx="4" fill="#b91c1c"/>
+      <text x="758.417933227345" y="204" class="value">0.227%</text>
+
+      <text x="54" y="263" class="country">Q3 (Middle)</text>
+      <rect x="220" y="244" width="272.3" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="502.2689075630252" y="262" class="value">$1080</text>
+      <rect x="560" y="244" width="128.5" height="24" rx="4" fill="#b91c1c"/>
+      <text x="698.5047276378546" y="262" class="value">0.155%</text>
+
+      <text x="54" y="321" class="country">Q4</text>
+      <rect x="220" y="302" width="254.1" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="484.11764705882354" y="320" class="value">$1008</text>
+      <rect x="560" y="302" width="77.6" height="24" rx="4" fill="#b91c1c"/>
+      <text x="647.5570687224405" y="320" class="value">0.093%</text>
+
+      <text x="54" y="379" class="country">Q5 (Top 20%)</text>
+      <rect x="220" y="360" width="300.0" height="24" rx="4" fill="#2f8f6b"/>
+      <text x="530" y="378" class="value">$1190</text>
+      <rect x="560" y="360" width="43.0" height="24" rx="4" fill="#b91c1c"/>
+      <text x="612.9729729729729" y="378" class="value">0.052%</text>
+  <rect x="52" y="440" width="250" height="70" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+  <text x="68" y="466" class="subtitle">Highest dollar spending</text>
+  <text x="68" y="494" class="metric">Q5 (Top 20%)</text>
+  <rect x="330" y="440" width="250" height="70" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+  <text x="346" y="466" class="subtitle">Largest income burden</text>
+  <text x="346" y="494" class="metric">Q1 (Lowest 20%)</text>
+  <rect x="608" y="440" width="250" height="70" rx="8" fill="#f7f9fb" stroke="#d6dde5"/>
+  <text x="624" y="466" class="subtitle">Regressivity ratio</text>
+  <text x="624" y="494" class="metric">7.0x</text>
+  <text x="52" y="536" class="footnote">Interpretation: higher-income consumers spend more dollars on drugs, but lower-income consumers bear the larger burden relative to income.</text>
+</svg>

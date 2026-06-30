@@ -1,0 +1,16 @@
+rank,country,import_value_bn,pre_tariff_share_pct,tariff_pct,post_tariff_share_pct,share_shift_pp,risk_tier
+1,Ireland,54.67,25.94,20.00,26.23,0.30,Very high
+2,Switzerland,19.20,9.11,31.00,7.53,-1.58,High
+3,Singapore,16.59,7.87,10.00,9.72,1.85,Low
+4,Germany,16.24,7.71,20.00,7.79,0.09,High
+5,Belgium,12.33,5.85,20.00,5.92,0.07,High
+6,India,12.31,5.84,27.00,5.18,-0.66,High
+7,Italy,11.18,5.30,20.00,5.36,0.06,High
+8,Japan,7.34,3.48,24.00,3.27,-0.22,Low
+9,China,6.94,3.29,54.00,1.87,-1.42,High
+10,United Kingdom,6.93,3.29,10.00,4.06,0.77,Low
+11,Netherlands,6.69,3.17,20.00,3.21,0.04,Low
+12,Slovenia,5.16,2.45,20.00,2.48,0.03,Low
+13,Canada,5.11,2.42,10.00,2.99,0.57,Low
+14,Hungary,4.27,2.03,20.00,2.05,0.02,Low
+15,France,3.91,1.85,20.00,1.88,0.02,Low

@@ -1,0 +1,26 @@
+{
+  "index_file": "data\\processed\\icio_2022\\country_sector_index.csv",
+  "n_rows": 4050,
+  "n_countries": 81,
+  "n_icio_sectors": 50,
+  "model_sector_counts": {
+    "services_other": 1539,
+    "manufacturing_other": 972,
+    "energy_primary": 810,
+    "retail_consumer": 405,
+    "steel_aluminum": 243,
+    "pharma": 81
+  },
+  "country_sector_count_summary": {
+    "count": 81.0,
+    "mean": 50.0,
+    "std": 0.0,
+    "min": 50.0,
+    "25%": 50.0,
+    "50%": 50.0,
+    "75%": 50.0,
+    "max": 50.0
+  },
+  "mapping_version": "v1_rule_based",
+  "notes": "Rule-based mapping intended for first pass; refine with concordance if needed."
+}

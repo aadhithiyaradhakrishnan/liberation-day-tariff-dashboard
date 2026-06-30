@@ -1,0 +1,21 @@
+{
+  "tariff_file": "data\\us_tariff_schedule_2025_hts8.csv",
+  "n_hts_rows": 13100,
+  "n_valid_ad_val_rows": 12050,
+  "overall_mean_ad_val_rate": 0.036147948547717836,
+  "industry_subset_counts": {
+    "steel_aluminum": 822,
+    "pharma": 130,
+    "retail_consumer": 648
+  },
+  "industry_subset_mean_rates": {
+    "steel_aluminum": 0.01087757909215956,
+    "pharma": 0.02446153846153846,
+    "retail_consumer": 0.06739414802065405
+  },
+  "notes": [
+    "First-pass sector shocks from HTS8 schedule.",
+    "Industry subsets use description keyword matching and pharmaceutical indicator when available.",
+    "Trade-weighted calibration can be added in next iteration."
+  ]
+}
