@@ -5,6 +5,20 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+import sys
+
+# ── Auto-download large files from Hugging Face if missing ───────────────────
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _ROOT)
+_LARGE_FILES = [
+    os.path.join(_ROOT, "data", "processed", "icio_2022", "io_coeff_matrix.npy"),
+    os.path.join(_ROOT, "data", "processed", "icio_2022", "io_intermediate_matrix.npy"),
+    os.path.join(_ROOT, "data", "code_and_release_data", "301 model", "D_all_data.zip"),
+]
+if any(not os.path.exists(f) for f in _LARGE_FILES):
+    with st.spinner("Downloading large data files from Hugging Face (first run only)..."):
+        import download_data
+        download_data.main()
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(

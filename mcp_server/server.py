@@ -20,6 +20,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
 OUT  = os.path.join(ROOT, "python_output")
 sys.path.insert(0, os.path.join(ROOT, "code_python"))
+sys.path.insert(0, ROOT)
+
+# ── Auto-download large files from Hugging Face if missing ───────────────────
+_LARGE_FILES = [
+    os.path.join(ROOT, "data", "processed", "icio_2022", "io_coeff_matrix.npy"),
+    os.path.join(ROOT, "data", "processed", "icio_2022", "io_intermediate_matrix.npy"),
+    os.path.join(ROOT, "data", "code_and_release_data", "301 model", "D_all_data.zip"),
+]
+if any(not os.path.exists(f) for f in _LARGE_FILES):
+    import download_data
+    download_data.main()
 
 from utils.solver_utils import solve_nu
 
