@@ -25,7 +25,7 @@ st.set_page_config(
     page_title="Liberation Day Tariff Dashboard",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
@@ -182,11 +182,14 @@ def load_pharma_outputs():
 
 @st.cache_data
 def load_retail():
-    prices = pd.read_csv(os.path.join(DATA, "retail_prices_illustrative.csv"))
-    prices["pct_increase"] = (prices["Price After Tariff"] - prices["Price Before Tariff"]) / prices["Price Before Tariff"] * 100
     cavallo = pd.read_csv(os.path.join(DATA, "daily_price_indices_cavallo_etal.csv"))
     cavallo["date"] = pd.to_datetime(cavallo["date"], format="%d%b%Y")
-    return prices, cavallo
+    r = np.load(os.path.join(OUT, "sector_retail_results.npz"), allow_pickle=True)
+    retail_stats = {}
+    for k in r.keys():
+        v = r[k]
+        retail_stats[k] = float(v) if v.ndim == 0 else v.tolist()
+    return cavallo, retail_stats
 
 @st.cache_data
 def load_manufacturing():
@@ -199,11 +202,157 @@ def load_manufacturing():
     mfg_stats = {k: float(r[k]) for k in r.keys()}
     return naics, price_idx, shocks, hts, mfg_stats
 
+@st.cache_data
+def load_pharma1():
+    """Load Pharma1.xlsx (USITC monthly import data) and return pharma_df + monthly column names."""
+    import warnings
+    warnings.filterwarnings("ignore")
+    df = pd.read_excel(os.path.join(DATA, "Pharma1.xlsx"),
+                       sheet_name="Query Results", header=2)
+    df.columns = [str(c).strip() for c in df.columns]
+    month_cols = ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"]
+    month_cols = [m for m in month_cols if m in df.columns]
+    for m in month_cols:
+        df[m] = pd.to_numeric(df[m], errors="coerce").fillna(0)
+    df["annual_total"] = df[month_cols].sum(axis=1)
+    df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
+    df["HTS Number"] = pd.to_numeric(df["HTS Number"], errors="coerce")
+    df = df.dropna(subset=["Year","HTS Number"]).copy()
+    return df, month_cols
+
+@st.cache_data
+def load_pharma_outputs():
+    """Load pharma analysis output CSVs: dependence, sourcing shifts, consumer burden, country exposure."""
+    dep = pd.read_csv(os.path.join(OUT, "pharma1_objective1_dependence_top_suppliers.csv"))
+    src = pd.read_csv(os.path.join(OUT, "pharma1_objective2_sourcing_shifts_2025.csv"))
+    burd = pd.read_csv(os.path.join(OUT, "pharma1_objective3_consumer_burden_2025.csv"))
+    exp  = pd.read_csv(os.path.join(OUT, "pharma1_country_exposure_2024.csv"))
+    return dep, src, burd, exp
+
+@st.cache_data
+def load_tariffs():
+    tariffs = pd.read_csv(os.path.join(DATA, "base_data", "tariffs.csv"))
+    cl = pd.read_csv(os.path.join(DATA, "base_data", "country_labels.csv"))
+    df = cl.copy()
+    df["applied_tariff"] = tariffs["applied_tariff"].values
+    df["tariff_pct"] = df["applied_tariff"] * 100
+    return df.sort_values("tariff_pct", ascending=False).reset_index(drop=True)
+
+@st.cache_data
+def load_pharma_risk():
+    risk    = pd.read_csv(os.path.join(OUT, "pharma1_supply_chain_risk_2024.csv"))
+    top_sup = pd.read_csv(os.path.join(OUT, "pharma1_objective1_dependence_top_suppliers.csv"))
+    hts_exp = pd.read_csv(os.path.join(OUT, "pharma1_hts_exposure_2024.csv"))
+    r = np.load(os.path.join(OUT, "sector_pharma_results.npz"), allow_pickle=True)
+    pharma_stats = {}
+    for k in r.keys():
+        v = r[k]
+        pharma_stats[k] = float(v) if v.ndim == 0 else v.tolist()
+    return risk, top_sup, hts_exp, pharma_stats
+
+# ── Import run_tariff_scenario for the scenario builder ──────────────────────
+_srv_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _srv_root not in sys.path:
+    sys.path.insert(0, _srv_root)
+from mcp_server.server import run_tariff_scenario as _run_tariff_scenario
+
+def _compute_custom_scenario(_frozen_rates):
+    overrides = {iso3: rate / 100.0 for iso3, rate in _frozen_rates}
+    return _run_tariff_scenario(tariff_overrides=overrides, countries=["USA"] + list(overrides.keys()))
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Header
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown('<div class="page-title">🏛️ Liberation Day Tariff Impact Dashboard</div>', unsafe_allow_html=True)
 st.markdown('<div class="page-subtitle">Replication of Ignatenko, Macedoni, Lashkaripour & Simonovska (2025) · April 2025 US Tariff Announcements</div>', unsafe_allow_html=True)
+
+# Load baseline data at top level so sidebar can access country names + results
+_g_results, _g_Y_i, _g_id_US, _g_cl, _g_results_15pct, _ = load_baseline()
+_g_tariff_df = load_tariffs()
+
+# These are set inside the sidebar block (no new scope in Python with-blocks) and read in Tab 1
+_country_profile = None
+_sb_live         = None   # single CE scenario result — computed once in sidebar, reused in Tab 1
+
+with st.sidebar:
+    st.markdown("### 🔍 Country Explorer")
+    st.markdown('<div style="font-size:12px;color:#64748b;margin-bottom:10px">Select any country to see its Liberation Day tariff stats and build a custom scenario.</div>', unsafe_allow_html=True)
+
+    _country_options = ["(Select a country)"] + sorted(_g_cl["CountryName"].tolist())
+    _sel_country = st.selectbox("Country", _country_options, key="country_explorer", label_visibility="collapsed")
+
+    if _sel_country != "(Select a country)":
+        _crow = _g_cl[_g_cl["CountryName"] == _sel_country]
+        if not _crow.empty:
+            _cidx    = int(_crow.index[0])
+            _ciso3   = str(_crow["iso3"].iloc[0])
+            _ct_row  = _g_tariff_df[_g_tariff_df["CountryName"] == _sel_country]
+            _ctariff = float(_ct_row["tariff_pct"].iloc[0]) if not _ct_row.empty else 0.0
+
+            # GE model stats — USTR no retaliation (scenario 0)
+            _c_welfare = float(_g_results[_cidx, 0, 0])
+            _c_cpi     = float(_g_results[_cidx, 5, 0])
+            _c_imp     = float(_g_results[_cidx, 3, 0])
+            _c_exp     = float(_g_results[_cidx, 2, 0])
+            _c_emp     = float(_g_results[_cidx, 4, 0])
+
+            st.markdown(f'<div style="background:#1a1d2e;border:1px solid #2d3250;border-radius:8px;padding:12px;margin-bottom:10px">'
+                f'<div style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px">{_sel_country.upper()}</div>'
+                f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+                f'<div><div style="color:#64748b;font-size:10px">Applied Tariff</div><div style="color:#f87171;font-size:18px;font-weight:700">{_ctariff:.0f}%</div></div>'
+                f'<div><div style="color:#64748b;font-size:10px">Welfare Change</div><div style="color:{"#22d3a0" if _c_welfare>0 else "#f87171"};font-size:18px;font-weight:700">{_c_welfare:+.2f}%</div></div>'
+                f'<div><div style="color:#64748b;font-size:10px">Price Change</div><div style="color:#fbbf24;font-size:16px;font-weight:600">{_c_cpi:+.1f}%</div></div>'
+                f'<div><div style="color:#64748b;font-size:10px">Import Vol.</div><div style="color:#60a5fa;font-size:16px;font-weight:600">{_c_imp:+.1f}%</div></div>'
+                f'<div><div style="color:#64748b;font-size:10px">Export Vol.</div><div style="color:#60a5fa;font-size:16px;font-weight:600">{_c_exp:+.1f}%</div></div>'
+                f'<div><div style="color:#64748b;font-size:10px">Employment</div><div style="color:{"#22d3a0" if _c_emp>0 else "#f87171"};font-size:16px;font-weight:600">{_c_emp:+.2f}%</div></div>'
+                f'</div></div>', unsafe_allow_html=True)
+
+            st.markdown("**What if we change the tariff?**")
+            # Reset flag must be checked before slider is instantiated
+            if st.session_state.pop("_reset_ce", False):
+                st.session_state["ce_scenario_slider"] = int(_ctariff)
+            _c_scenario_rate = st.slider(
+                f"New tariff for {_sel_country}", 0, 100, int(_ctariff), 1, format="%d%%",
+                key="ce_scenario_slider"
+            )
+            if st.button("↺ Reset to Liberation Day tariff", use_container_width=True, key="ce_reset"):
+                st.session_state["_reset_ce"] = True
+                st.rerun()
+
+            _country_profile = {
+                "country": _sel_country, "iso3": _ciso3, "idx": _cidx,
+                "tariff": _ctariff, "scenario_rate": _c_scenario_rate,
+                "welfare": _c_welfare, "cpi": _c_cpi,
+                "imp": _c_imp, "exp": _c_exp, "emp": _c_emp,
+            }
+
+            # ── Inline live result right below the slider ──────────────────
+            if _c_scenario_rate != int(_ctariff):
+                _sb_frozen = ((_ciso3, _c_scenario_rate),)
+                _sb_live   = _compute_custom_scenario(_sb_frozen)  # also used in Tab 1
+                _sb_ctries = _sb_live.get("data", {}).get("countries", [])
+                _sb_us     = next((r for r in _sb_ctries if r.get("iso3") == "USA"), {})
+                _sb_wd     = _sb_us.get("welfare_delta_pct") or 0
+                _sb_nw     = _sb_us.get("new_welfare_pct") or 0
+                _sb_bw     = _sb_us.get("baseline_welfare_pct") or 0
+                _sb_dpp    = _c_scenario_rate - int(_ctariff)
+                _sb_clr    = "#22d3a0" if _sb_wd > 0 else "#f87171"
+                _sb_dir    = "cut" if _sb_dpp < 0 else "raised"
+                _sb_effect = "better off" if _sb_wd > 0 else "worse off"
+                st.markdown(
+                    f'<div style="background:#0f172a;border:1px solid {_sb_clr};border-radius:8px;padding:12px;margin-top:8px">'
+                    f'<div style="color:{_sb_clr};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:8px">LIVE SCENARIO RESULT</div>'
+                    f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+                    f'<div><div style="color:#64748b;font-size:9px">US economy today</div><div style="color:#60a5fa;font-size:16px;font-weight:700">{_sb_bw:+.2f}%</div></div>'
+                    f'<div><div style="color:#64748b;font-size:9px">US economy after change</div><div style="color:{"#22d3a0" if _sb_nw>0 else "#f87171"};font-size:16px;font-weight:700">{_sb_nw:+.2f}%</div></div>'
+                    f'</div>'
+                    f'<div style="background:#1a1d2e;border-radius:6px;padding:8px;text-align:center">'
+                    f'<div style="color:#64748b;font-size:9px">Change in US wellbeing</div>'
+                    f'<div style="color:{_sb_clr};font-size:22px;font-weight:700">{_sb_wd:+.2f}%</div>'
+                    f'<div style="color:#475569;font-size:10px">America is <b style="color:{_sb_clr}">{_sb_effect}</b> if tariff is {_sb_dir} by {abs(_sb_dpp)}pp</div>'
+                    f'</div>'
+                    f'</div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🌐 Macro Overview", "💊 Pharma Supply Chain", "🛒 Retail & Consumer Prices", "🏭 Manufacturing Exposure", "🤖 AI Analyst", "🔌 MCP Analyst"])
 
@@ -212,8 +361,8 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🌐 Macro Overview", "💊 Pharm
 # ═════════════════════════════════════════════════════════════════════════════
 with tab1:
     results, Y_i, id_US, cl, results_15pct, d_trade_15pct = load_baseline()
+    tariff_df = load_tariffs()
 
-    # Scenario definitions — None signals the 15% custom scenario
     SCENARIOS = {
         "USTR + No Retaliation":         0,
         "USTR + Lump-Sum Rebate":        7,
@@ -222,25 +371,22 @@ with tab1:
         "USTR + Optimal Retaliation":    4,
         "Flat 15% Tariff (Custom)":      None,
     }
-    METRICS = ["Welfare", "CPI", "Imports", "Exports", "Real Wage", "Rev/GDP"]
 
     col_ctrl, _ = st.columns([2, 5])
     with col_ctrl:
         scenario_name = st.selectbox("Scenario", list(SCENARIOS.keys()), index=0)
     sc = SCENARIOS[scenario_name]
-
     is_15pct = (sc is None)
     # Column order in results: [welfare, deficit, exports/GDP, imports/GDP, employment, CPI, rev/GDP]
     us_vals = results_15pct[id_US, :7] if is_15pct else results[id_US, :7, sc]
 
-    # KPI row — indices: 0=welfare, 1=deficit, 2=exports, 3=imports, 4=employment, 5=CPI, 6=rev/GDP
     kpi_data = [
-        ("US Welfare",      f"{us_vals[0]:+.2f}%", "positive" if us_vals[0] > 0 else "negative", "Real income change"),
-        ("US CPI",          f"{us_vals[5]:+.1f}%", "negative" if us_vals[5] > 0 else "positive", "Consumer price level"),
-        ("US Imports/GDP",  f"{us_vals[3]:+.1f}%", "negative" if us_vals[3] < 0 else "positive", "Import volume / GDP"),
-        ("US Exports/GDP",  f"{us_vals[2]:+.1f}%", "negative" if us_vals[2] < 0 else "positive", "Export volume / GDP"),
-        ("Employment",      f"{us_vals[4]:+.2f}%", "positive" if us_vals[4] > 0 else "negative", "Labor employment"),
-        ("Trade Deficit Δ", f"{us_vals[1]:+.1f}%", "neutral",  "Change in trade deficit"),
+        ("Living Standards Change", f"{us_vals[0]:+.2f}%", "positive" if us_vals[0] > 0 else "negative", "US real income"),
+        ("Consumer Price Change",   f"{us_vals[5]:+.1f}%", "negative" if us_vals[5] > 0 else "positive", "CPI"),
+        ("Import Volume Change",    f"{us_vals[3]:+.1f}%", "negative" if us_vals[3] < 0 else "positive", "Imports / GDP"),
+        ("Export Volume Change",    f"{us_vals[2]:+.1f}%", "negative" if us_vals[2] < 0 else "positive", "Exports / GDP"),
+        ("Employment Change",       f"{us_vals[4]:+.2f}%", "positive" if us_vals[4] > 0 else "negative", "US labor market"),
+        ("Trade Deficit Change",    f"{us_vals[1]:+.1f}%", "neutral",  "Deficit % change"),
     ]
     cols = st.columns(6)
     for col, (label, val, cls, sub) in zip(cols, kpi_data):
@@ -254,8 +400,148 @@ with tab1:
 
     st.markdown("")
 
-    # ── World welfare map ──────────────────────────────────────────────────
-    st.markdown('<div class="section-header">Country-Level Welfare Change (194 Countries)</div>', unsafe_allow_html=True)
+    # ── Country spotlight (top of page when a country is selected) ─────────
+    if _country_profile:
+        cp = _country_profile
+
+        # Plain-English labels and interpretations
+        _w_label  = "Economy grew" if cp["welfare"] > 0 else "Economy shrank"
+        _w_sub    = f"{'Gained' if cp['welfare']>0 else 'Lost'} {abs(cp['welfare']):.2f}% in real income under Liberation Day tariffs"
+        _cpi_label = "Prices fell" if cp["cpi"] < 0 else "Prices rose"
+        _cpi_sub  = f"{'Cheaper' if cp['cpi']<0 else 'More expensive'} goods & services — consumer price change"
+        _imp_label = "Bought more from US" if cp["imp"] > 0 else "Bought less from US"
+        _imp_sub  = f"Change in how much {cp['country']} imports from the US"
+        _emp_label = "Jobs gained" if cp["emp"] > 0 else "Jobs lost"
+        _emp_sub  = f"Estimated employment change due to tariff shock"
+
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#0d2218,#1a1d2e);border:2px solid #22d3a0;border-radius:12px;padding:20px;margin-bottom:16px">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'
+            f'<div style="background:#22d3a0;color:#0d2218;font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:20px">COUNTRY FOCUS</div>'
+            f'<div style="color:#e2e8f0;font-size:24px;font-weight:700">{cp["country"]}</div>'
+            f'<div style="color:#64748b;font-size:13px;margin-left:auto">US tariff rate: <span style="color:#f87171;font-weight:700">{cp["tariff"]:.0f}%</span></div>'
+            f'</div>'
+            f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">'
+            f'<div style="background:#0f172a;border-radius:8px;padding:12px">'
+            f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:2px">{_w_label}</div>'
+            f'  <div style="color:{"#22d3a0" if cp["welfare"]>0 else "#f87171"};font-size:26px;font-weight:700">{cp["welfare"]:+.2f}%</div>'
+            f'  <div style="color:#475569;font-size:10px;margin-top:4px">{_w_sub}</div>'
+            f'</div>'
+            f'<div style="background:#0f172a;border-radius:8px;padding:12px">'
+            f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:2px">{_cpi_label}</div>'
+            f'  <div style="color:#fbbf24;font-size:26px;font-weight:700">{cp["cpi"]:+.1f}%</div>'
+            f'  <div style="color:#475569;font-size:10px;margin-top:4px">{_cpi_sub}</div>'
+            f'</div>'
+            f'<div style="background:#0f172a;border-radius:8px;padding:12px">'
+            f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:2px">{_imp_label}</div>'
+            f'  <div style="color:#60a5fa;font-size:26px;font-weight:700">{cp["imp"]:+.1f}%</div>'
+            f'  <div style="color:#475569;font-size:10px;margin-top:4px">{_imp_sub}</div>'
+            f'</div>'
+            f'<div style="background:#0f172a;border-radius:8px;padding:12px">'
+            f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:2px">{_emp_label}</div>'
+            f'  <div style="color:{"#22d3a0" if cp["emp"]>0 else "#f87171"};font-size:26px;font-weight:700">{cp["emp"]:+.2f}%</div>'
+            f'  <div style="color:#475569;font-size:10px;margin-top:4px">{_emp_sub}</div>'
+            f'</div>'
+            f'</div></div>', unsafe_allow_html=True)
+
+        # Scenario result if slider was moved
+        if _sb_live:
+            _ce_countries = _sb_live.get("data", {}).get("countries", [])
+            _ce_us   = next((r for r in _ce_countries if r.get("iso3") == "USA"), {})
+            _ce_ctry = next((r for r in _ce_countries if r.get("iso3") == cp["iso3"]), {})
+            _delta_pp  = cp["scenario_rate"] - int(cp["tariff"])
+            _wd_us     = (_ce_us.get("welfare_delta_pct") or 0)
+            _nw_us     = (_ce_us.get("new_welfare_pct") or 0)
+            _bw_us     = (_ce_us.get("baseline_welfare_pct") or 0)
+            _wd_ctry   = (_ce_ctry.get("welfare_delta_pct") or 0)
+            _clr_delta = "#22d3a0" if _wd_us > 0 else "#f87171"
+            _direction = "cut" if _delta_pp < 0 else "raised"
+            _us_effect = "better off" if _wd_us > 0 else "worse off"
+            if _wd_us > 0:
+                _insight = (f"{'Cutting' if _delta_pp < 0 else 'Changing'} {cp['country']}'s tariff by {abs(_delta_pp)}pp "
+                            f"is estimated to improve US living standards by {abs(_wd_us):.2f}pp — "
+                            f"cheaper imports benefit American consumers.")
+            else:
+                _insight = (f"{'Raising' if _delta_pp > 0 else 'Changing'} {cp['country']}'s tariff by {abs(_delta_pp)}pp "
+                            f"is estimated to reduce US living standards by {abs(_wd_us):.2f}pp — "
+                            f"higher tariffs make imports more expensive for American consumers.")
+
+            st.markdown(
+                f'<div style="background:#1a1d2e;border:1px solid {"#22d3a0" if _wd_us>0 else "#f87171"};border-radius:10px;padding:18px;margin-bottom:14px">'
+                f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+                f'<div style="background:{"#0d2218" if _wd_us>0 else "#2a0f0f"};color:{"#22d3a0" if _wd_us>0 else "#f87171"};font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:20px">WHAT HAPPENS IF WE CHANGE THIS?</div>'
+                f'<div style="color:#e2e8f0;font-size:14px">{cp["country"]} tariff: <b>{cp["tariff"]:.0f}%</b> → <span style="color:{_clr_delta};font-weight:700">{cp["scenario_rate"]}%</span> ({_delta_pp:+d}pp)</div>'
+                f'</div>'
+                f'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">'
+
+                f'<div style="background:#0f172a;border-radius:8px;padding:12px">'
+                f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:2px">US economy today (Liberation Day)</div>'
+                f'  <div style="color:#60a5fa;font-size:24px;font-weight:700">{_bw_us:+.2f}%</div>'
+                f'  <div style="color:#475569;font-size:10px;margin-top:4px">Current estimated change in US living standards</div>'
+                f'</div>'
+
+                f'<div style="background:#0f172a;border-radius:8px;padding:12px">'
+                f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:2px">US economy under your scenario</div>'
+                f'  <div style="color:{"#22d3a0" if _nw_us>0 else "#f87171"};font-size:24px;font-weight:700">{_nw_us:+.2f}%</div>'
+                f'  <div style="color:#475569;font-size:10px;margin-top:4px">Estimated US living standards if tariff changes</div>'
+                f'</div>'
+
+                f'<div style="background:#0f172a;border-radius:8px;padding:12px;border:1px solid {_clr_delta}">'
+                f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:2px">Change in US wellbeing</div>'
+                f'  <div style="color:{_clr_delta};font-size:24px;font-weight:700">{_wd_us:+.2f}%</div>'
+                f'  <div style="color:#475569;font-size:10px;margin-top:4px">America is <b style="color:{_clr_delta}">{_us_effect}</b> if this tariff is {_direction}</div>'
+                f'</div>'
+
+                f'</div>'
+                f'<div style="background:#0f172a;border-radius:8px;padding:12px;border-left:3px solid {_clr_delta}">'
+                f'  <div style="color:#94a3b8;font-size:11px;margin-bottom:4px">💡 What this means</div>'
+                f'  <div style="color:#e2e8f0;font-size:13px;line-height:1.5">{_insight} '
+                f'(Uses a partial equilibrium model — directionally correct, not a full GE re-solve.)</div>'
+                f'</div>'
+                f'</div>', unsafe_allow_html=True)
+
+    # ── Which countries face the highest US tariffs? ───────────────────────
+    st.markdown('<div class="section-header">Which countries face the highest total US tariff rates?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Total US applied tariff rate as of Liberation Day (April 2, 2025), including any pre-existing tariffs. China\'s 54% = 34% Liberation Day reciprocal + 20% imposed earlier in 2025. Most other countries face 10–34%.</div>', unsafe_allow_html=True)
+
+    def _tariff_color(r):
+        if r >= 50: return "#f87171"
+        elif r >= 25: return "#fb923c"
+        elif r >= 10: return "#fbbf24"
+        return "#22d3a0"
+
+    # Build chart data — include selected country even if outside top 25
+    top25 = tariff_df.head(25).copy()
+    _sel_name = _country_profile["country"] if _country_profile else None
+    if _sel_name and _sel_name not in top25["CountryName"].values:
+        _sel_row = tariff_df[tariff_df["CountryName"] == _sel_name]
+        if not _sel_row.empty:
+            top25 = pd.concat([top25, _sel_row]).reset_index(drop=True)
+
+    bar_colors_t1 = [
+        "#ffffff" if (_sel_name and row["CountryName"] == _sel_name) else _tariff_color(row["tariff_pct"])
+        for _, row in top25.iterrows()
+    ]
+    bar_widths = [1.0 if (_sel_name and row["CountryName"] == _sel_name) else 0.7 for _, row in top25.iterrows()]
+
+    fig_tariff = go.Figure(go.Bar(
+        x=top25["tariff_pct"], y=top25["CountryName"],
+        orientation="h", marker_color=bar_colors_t1,
+        marker_line_color=["#22d3a0" if (_sel_name and row["CountryName"] == _sel_name) else "rgba(0,0,0,0)" for _, row in top25.iterrows()],
+        marker_line_width=[3 if (_sel_name and row["CountryName"] == _sel_name) else 0 for _, row in top25.iterrows()],
+        text=[f"◀ {v:.0f}% ← selected" if (_sel_name and row["CountryName"] == _sel_name) else f"{v:.0f}%" for v, (_, row) in zip(top25["tariff_pct"], top25.iterrows())],
+        textposition="outside",
+    ))
+    _chart_title = f"Total US Applied Tariff Rate — {_sel_name} highlighted" if _sel_name else "Top 25 Countries by Total US Applied Tariff Rate (as of April 2025)"
+    fig_tariff.update_layout(**PLOTLY_THEME, height=560 if _sel_name and _sel_name not in tariff_df.head(25)["CountryName"].values else 520,
+        title=_chart_title, xaxis_title="Tariff Rate (%)")
+    fig_tariff.update_xaxes(range=[0, 75])
+    fig_tariff.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig_tariff, use_container_width=True)
+
+    # ── World map ──────────────────────────────────────────────────────────
+    st.markdown('<div class="section-header">How each country\'s economy was affected</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Welfare change is the estimated effect on each country\'s real income. Green = economic gains; red = losses. All 194 countries are modelled simultaneously in a general equilibrium framework.</div>', unsafe_allow_html=True)
 
     welfare_vals = results_15pct[:, 0] if is_15pct else results[:, 0, sc]
     map_df = cl.copy()
@@ -274,106 +560,214 @@ with tab1:
         hovertemplate="<b>%{hovertext}</b><br>Welfare: %{z:.2f}%<extra></extra>"
     )
     fig_map.update_layout(
-        **PLOTLY_THEME,
-        height=420,
+        **PLOTLY_THEME, height=420,
         geo=dict(
-            bgcolor="#0f1117",
-            showframe=False,
-            showcoastlines=True,
-            coastlinecolor="#2d3250",
+            bgcolor="#0f1117", showframe=False,
+            showcoastlines=True, coastlinecolor="#2d3250",
             showland=True, landcolor="#1a1d2e",
             showocean=True, oceancolor="#0f1117",
-            showlakes=False,
-            projection_type="natural earth",
+            showlakes=False, projection_type="natural earth",
         ),
         coloraxis_colorbar=dict(
             title="Welfare %", tickfont=dict(color="#94a3b8"),
-            title_font=dict(color="#94a3b8"), bgcolor="#1a1d2e",
-            bordercolor="#2d3250",
+            title_font=dict(color="#94a3b8"), bgcolor="#1a1d2e", bordercolor="#2d3250",
         ),
     )
+    # Highlight selected country on the map
+    if _country_profile:
+        _hl = _g_cl[_g_cl["CountryName"] == _country_profile["country"]]
+        if not _hl.empty:
+            fig_map.add_trace(go.Choropleth(
+                locations=[_hl["iso3"].iloc[0]],
+                z=[1], colorscale=[[0,"#22d3a0"],[1,"#22d3a0"]],
+                showscale=False, marker_line_color="#ffffff", marker_line_width=2,
+                hovertemplate=f"<b>{_country_profile['country']}</b><br>Welfare: {_country_profile['welfare']:+.2f}%<extra></extra>",
+            ))
     st.plotly_chart(fig_map, use_container_width=True)
 
-    # ── Scenario comparison bar + trade metrics ───────────────────────────
-    st.markdown('<div class="section-header">Scenario Comparison</div>', unsafe_allow_html=True)
+    # ── Regional breakdown ─────────────────────────────────────────────────
+    st.markdown('<div class="section-header">Which regions were hit hardest?</div>', unsafe_allow_html=True)
+
+    _REGION_MAP_T1 = {
+        "USA":"North America","CAN":"North America","MEX":"North America",
+        "CHN":"East Asia","JPN":"East Asia","KOR":"East Asia","TWN":"East Asia","HKG":"East Asia","PRK":"East Asia","MNG":"East Asia","MAC":"East Asia",
+        "DEU":"Europe","FRA":"Europe","GBR":"Europe","ITA":"Europe","NLD":"Europe","BEL":"Europe","ESP":"Europe","CHE":"Europe","AUT":"Europe","SWE":"Europe","DNK":"Europe","NOR":"Europe","FIN":"Europe","PRT":"Europe","IRL":"Europe","GRC":"Europe","POL":"Europe","CZE":"Europe","HUN":"Europe","ROU":"Europe","SVK":"Europe","BGR":"Europe","HRV":"Europe","SVN":"Europe","LTU":"Europe","LVA":"Europe","EST":"Europe","LUX":"Europe","MLT":"Europe","CYP":"Europe","RUS":"Europe","UKR":"Europe","BLR":"Europe","MDA":"Europe","GEO":"Europe","ARM":"Europe","AZE":"Europe","TUR":"Europe","MKD":"Europe","SRB":"Europe","BIH":"Europe","MNE":"Europe","ALB":"Europe","ISL":"Europe",
+        "IND":"South Asia","PAK":"South Asia","BGD":"South Asia","LKA":"South Asia","NPL":"South Asia","AFG":"South Asia","MDV":"South Asia","BTN":"South Asia",
+        "BRA":"Latin America","ARG":"Latin America","COL":"Latin America","CHL":"Latin America","PER":"Latin America","VEN":"Latin America","ECU":"Latin America","BOL":"Latin America","PRY":"Latin America","URY":"Latin America","GTM":"Latin America","HND":"Latin America","SLV":"Latin America","CRI":"Latin America","PAN":"Latin America","DOM":"Latin America","CUB":"Latin America","HTI":"Latin America","JAM":"Latin America","TTO":"Latin America","BRB":"Latin America","BHS":"Latin America","GUY":"Latin America","SUR":"Latin America","BLZ":"Latin America","NIC":"Latin America",
+        "SAU":"Middle East & Africa","ARE":"Middle East & Africa","IRN":"Middle East & Africa","ISR":"Middle East & Africa","EGY":"Middle East & Africa","ZAF":"Middle East & Africa","NGA":"Middle East & Africa","KEN":"Middle East & Africa","ETH":"Middle East & Africa","GHA":"Middle East & Africa","TZA":"Middle East & Africa","UGA":"Middle East & Africa","AGO":"Middle East & Africa","MOZ":"Middle East & Africa","ZMB":"Middle East & Africa","MAR":"Middle East & Africa","TUN":"Middle East & Africa","DZA":"Middle East & Africa","LBY":"Middle East & Africa","SDN":"Middle East & Africa","IRQ":"Middle East & Africa","SYR":"Middle East & Africa","LBN":"Middle East & Africa","JOR":"Middle East & Africa","KWT":"Middle East & Africa","BHR":"Middle East & Africa","QAT":"Middle East & Africa","OMN":"Middle East & Africa","YEM":"Middle East & Africa","CMR":"Middle East & Africa","CIV":"Middle East & Africa","SEN":"Middle East & Africa","MDG":"Middle East & Africa","MLI":"Middle East & Africa","BFA":"Middle East & Africa","NER":"Middle East & Africa","TCD":"Middle East & Africa","GIN":"Middle East & Africa","SLE":"Middle East & Africa","LBR":"Middle East & Africa","BEN":"Middle East & Africa","TGO":"Middle East & Africa","RWA":"Middle East & Africa","BDI":"Middle East & Africa","MWI":"Middle East & Africa","ZWE":"Middle East & Africa","BWA":"Middle East & Africa","NAM":"Middle East & Africa","LSO":"Middle East & Africa","SWZ":"Middle East & Africa","DJI":"Middle East & Africa","ERI":"Middle East & Africa","COD":"Middle East & Africa","CAF":"Middle East & Africa","COG":"Middle East & Africa","GAB":"Middle East & Africa","GNQ":"Middle East & Africa","STP":"Middle East & Africa","CPV":"Middle East & Africa","GMB":"Middle East & Africa","GNB":"Middle East & Africa","MRT":"Middle East & Africa","COM":"Middle East & Africa","MUS":"Middle East & Africa","SYC":"Middle East & Africa",
+        "AUS":"Asia-Pacific","NZL":"Asia-Pacific","SGP":"Asia-Pacific","MYS":"Asia-Pacific","THA":"Asia-Pacific","IDN":"Asia-Pacific","PHL":"Asia-Pacific","VNM":"Asia-Pacific","MMR":"Asia-Pacific","KHM":"Asia-Pacific","LAO":"Asia-Pacific","BRN":"Asia-Pacific","PNG":"Asia-Pacific","FJI":"Asia-Pacific","KAZ":"Asia-Pacific","UZB":"Asia-Pacific","TKM":"Asia-Pacific","KGZ":"Asia-Pacific","TJK":"Asia-Pacific",
+    }
+
+    reg_data = []
+    for i, row in cl.iterrows():
+        iso = row["iso3"]
+        region = _REGION_MAP_T1.get(iso, "Other")
+        reg_data.append({"iso3": iso, "region": region, "welfare": float(welfare_vals[i]), "gdp": float(Y_i[i])})
+    reg_df = pd.DataFrame(reg_data)
+
+    def _gdp_wt_avg(g):
+        w = g["gdp"]
+        tot = w.sum()
+        return (g["welfare"] * w).sum() / tot if tot > 0 else 0
+
+    region_summary = reg_df.groupby("region").apply(
+        lambda g: pd.Series({
+            "Countries": len(g),
+            "Simple Avg %": g["welfare"].mean(),
+            "GDP-Weighted %": _gdp_wt_avg(g),
+        })
+    ).reset_index().sort_values("GDP-Weighted %")
+
+    c_reg1, c_reg2 = st.columns([3, 2])
+    with c_reg1:
+        colors_reg = ["#f87171" if v < 0 else "#22d3a0" for v in region_summary["GDP-Weighted %"]]
+        fig_reg = go.Figure(go.Bar(
+            x=region_summary["GDP-Weighted %"], y=region_summary["region"],
+            orientation="h", marker_color=colors_reg,
+            text=[f"{v:+.2f}%" for v in region_summary["GDP-Weighted %"]],
+            textposition="outside",
+        ))
+        fig_reg.add_vline(x=0, line_color="#4b5563", line_width=1)
+        fig_reg.update_layout(**PLOTLY_THEME, height=340,
+            title="GDP-Weighted Welfare Change by World Region",
+            xaxis_title="Welfare % (GDP-weighted average)")
+        fig_reg.update_yaxes(autorange="reversed")
+        st.plotly_chart(fig_reg, use_container_width=True)
+
+    with c_reg2:
+        disp_reg = region_summary.copy()
+        disp_reg["Simple Avg %"] = disp_reg["Simple Avg %"].map(lambda x: f"{x:+.2f}%")
+        disp_reg["GDP-Weighted %"] = disp_reg["GDP-Weighted %"].map(lambda x: f"{x:+.2f}%")
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.dataframe(disp_reg.reset_index(drop=True), use_container_width=True, hide_index=True)
+
+    # ── Scenario comparison ────────────────────────────────────────────────
+    st.markdown('<div class="section-header">Scenario Comparison — Different Tariff Approaches</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
 
     with c1:
         sc_names = list(SCENARIOS.keys())
         sc_idxs  = list(SCENARIOS.values())
-        welfare_by_sc = [
-            results_15pct[id_US, 0] if i is None else results[id_US, 0, i]
-            for i in sc_idxs
-        ]
-        cpi_by_sc = [
-            results_15pct[id_US, 5] if i is None else results[id_US, 5, i]
-            for i in sc_idxs
-        ]
+        welfare_by_sc = [results_15pct[id_US, 0] if i is None else results[id_US, 0, i] for i in sc_idxs]
+        cpi_by_sc     = [results_15pct[id_US, 5] if i is None else results[id_US, 5, i] for i in sc_idxs]
 
         fig_sc = go.Figure()
         fig_sc.add_trace(go.Bar(
-            name="US Welfare", x=sc_names, y=welfare_by_sc,
+            name="US Living Standards", x=sc_names, y=welfare_by_sc,
             marker_color=["#22d3a0" if v > 0 else "#f87171" for v in welfare_by_sc],
             text=[f"{v:+.2f}%" for v in welfare_by_sc], textposition="outside",
         ))
         fig_sc.add_trace(go.Bar(
-            name="CPI Change", x=sc_names, y=cpi_by_sc,
+            name="Consumer Price Change", x=sc_names, y=cpi_by_sc,
             marker_color="#fbbf24", opacity=0.7,
             text=[f"{v:+.1f}%" for v in cpi_by_sc], textposition="outside",
         ))
         fig_sc.update_layout(**PLOTLY_THEME, height=360,
-            title="US Welfare & CPI Across Scenarios",
-            barmode="group",
-            xaxis_tickangle=-25,
+            title="US Living Standards & Prices Across Scenarios",
+            barmode="group", xaxis_tickangle=-25,
             legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
         st.plotly_chart(fig_sc, use_container_width=True)
 
     with c2:
-        # Column order: [0=welfare, 1=deficit, 2=exports, 3=imports, 4=employment, 5=CPI, 6=rev/GDP]
-        METRICS    = ["Welfare", "CPI", "Imports/GDP", "Exports/GDP", "Employment", "Trade Deficit", "Rev/GDP"]
+        METRICS_T1 = ["Living Standards", "Consumer Prices", "Imports/GDP", "Exports/GDP", "Employment", "Trade Deficit", "Tax Revenue"]
         col_order  = [0, 5, 3, 2, 4, 1, 6]
-        metrics_vals = [
-            results_15pct[id_US, c] if is_15pct else results[id_US, c, sc]
-            for c in col_order
-        ]
-        colors = ["#22d3a0" if v >= 0 else "#f87171" for v in metrics_vals]
+        metrics_vals = [results_15pct[id_US, c] if is_15pct else results[id_US, c, sc] for c in col_order]
         fig_met = go.Figure(go.Bar(
-            x=METRICS, y=metrics_vals,
-            marker_color=colors,
-            text=[f"{v:+.2f}%" for v in metrics_vals],
-            textposition="outside",
+            x=METRICS_T1, y=metrics_vals,
+            marker_color=["#22d3a0" if v >= 0 else "#f87171" for v in metrics_vals],
+            text=[f"{v:+.2f}%" for v in metrics_vals], textposition="outside",
         ))
         fig_met.update_layout(**PLOTLY_THEME, height=360,
-            title=f"US Metrics — {scenario_name}",
+            title=f"US Economic Outcomes — {scenario_name}",
             yaxis_title="% Change")
         st.plotly_chart(fig_met, use_container_width=True)
 
-    # ── Top 15 winners / losers ────────────────────────────────────────────
-    st.markdown('<div class="section-header">Top 15 Winners & Losers (Welfare %)</div>', unsafe_allow_html=True)
+    # ── Top 20 winners / losers ────────────────────────────────────────────
+    st.markdown('<div class="section-header">Biggest Winners and Biggest Losers</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Small open economies that trade heavily with the US face the largest losses. Countries that compete with US exports in third markets may actually gain.</div>', unsafe_allow_html=True)
     c3, c4 = st.columns(2)
 
-    map_df_sorted = map_df.sort_values("welfare")  # map_df["welfare"] already set above
+    map_df_sorted = map_df.sort_values("welfare")
+    _hl_name = _country_profile["country"] if _country_profile else None
+
     with c3:
-        losers = map_df_sorted.head(15)
+        losers = map_df_sorted.head(20).copy()
+        # If selected country is a loser, ensure it's included
+        if _hl_name and _hl_name not in losers["CountryName"].values:
+            _hl_row = map_df_sorted[map_df_sorted["CountryName"] == _hl_name]
+            if not _hl_row.empty and float(_hl_row["welfare"].iloc[0]) < 0:
+                losers = pd.concat([losers, _hl_row]).sort_values("welfare").reset_index(drop=True)
+        _loser_colors = ["#ffffff" if (_hl_name and n == _hl_name) else "#f87171" for n in losers["CountryName"]]
         fig_l = go.Figure(go.Bar(
             x=losers["welfare"], y=losers["CountryName"],
-            orientation="h", marker_color="#f87171",
-            text=[f"{v:.2f}%" for v in losers["welfare"]], textposition="outside",
+            orientation="h", marker_color=_loser_colors,
+            marker_line_color=["#22d3a0" if (_hl_name and n == _hl_name) else "rgba(0,0,0,0)" for n in losers["CountryName"]],
+            marker_line_width=[2 if (_hl_name and n == _hl_name) else 0 for n in losers["CountryName"]],
+            text=[f"◀ {v:.2f}%" if (_hl_name and n == _hl_name) else f"{v:.2f}%" for v, n in zip(losers["welfare"], losers["CountryName"])],
+            textposition="outside",
         ))
-        fig_l.update_layout(**PLOTLY_THEME, height=400, title="Top 15 Losers",
-            xaxis_title="Welfare Change %")
+        _loser_title = f"Top 20 Biggest Losers — {_hl_name} highlighted" if _hl_name else "Top 20 Biggest Losers"
+        fig_l.update_layout(**PLOTLY_THEME, height=480, title=_loser_title, xaxis_title="Welfare Change %")
         st.plotly_chart(fig_l, use_container_width=True)
 
     with c4:
-        winners = map_df_sorted.tail(15).sort_values("welfare", ascending=False)
+        winners = map_df_sorted.tail(20).sort_values("welfare", ascending=False).copy()
+        # If selected country is a winner, ensure it's included
+        if _hl_name and _hl_name not in winners["CountryName"].values:
+            _hl_row = map_df_sorted[map_df_sorted["CountryName"] == _hl_name]
+            if not _hl_row.empty and float(_hl_row["welfare"].iloc[0]) >= 0:
+                winners = pd.concat([winners, _hl_row]).sort_values("welfare", ascending=False).reset_index(drop=True)
+        _winner_colors = ["#ffffff" if (_hl_name and n == _hl_name) else "#22d3a0" for n in winners["CountryName"]]
         fig_w = go.Figure(go.Bar(
             x=winners["welfare"], y=winners["CountryName"],
-            orientation="h", marker_color="#22d3a0",
-            text=[f"{v:.2f}%" for v in winners["welfare"]], textposition="outside",
+            orientation="h", marker_color=_winner_colors,
+            marker_line_color=["#22d3a0" if (_hl_name and n == _hl_name) else "rgba(0,0,0,0)" for n in winners["CountryName"]],
+            marker_line_width=[2 if (_hl_name and n == _hl_name) else 0 for n in winners["CountryName"]],
+            text=[f"◀ {v:.2f}%" if (_hl_name and n == _hl_name) else f"{v:.2f}%" for v, n in zip(winners["welfare"], winners["CountryName"])],
+            textposition="outside",
         ))
-        fig_w.update_layout(**PLOTLY_THEME, height=400, title="Top 15 Winners",
-            xaxis_title="Welfare Change %")
+        _winner_title = f"Top 20 Biggest Winners — {_hl_name} highlighted" if _hl_name else "Top 20 Biggest Winners"
+        fig_w.update_layout(**PLOTLY_THEME, height=480, title=_winner_title, xaxis_title="Welfare Change %")
         st.plotly_chart(fig_w, use_container_width=True)
+
+    # ── Country Deep Dive — PE scenario chart + global rank ───────────────────
+    if _country_profile:
+        cp = _country_profile
+        st.markdown(f'<div class="section-header">🔍 {cp["country"]}: Scenario Analysis & Global Ranking</div>', unsafe_allow_html=True)
+
+        _ch1, _ch2 = st.columns(2)
+        with _ch1:
+            if _sb_live and _sb_live.get("chart_spec"):
+                fig_ce = go.Figure(_sb_live["chart_spec"])
+                fig_ce.update_layout(**PLOTLY_THEME, height=320,
+                    title=f"Welfare Impact: {cp['country']} tariff {cp['tariff']:.0f}% → {cp['scenario_rate']}%")
+                st.plotly_chart(fig_ce, use_container_width=True)
+            else:
+                st.markdown('<div class="insight-box">Move the scenario slider in the sidebar to see estimated welfare impact.</div>', unsafe_allow_html=True)
+
+        with _ch2:
+            _wdf = _g_cl.copy()
+            _wdf["welfare"] = _g_results[:, 0, 0]
+            _wdf_sorted = _wdf.sort_values("welfare").reset_index(drop=True)
+            _rank_idx = _wdf_sorted[_wdf_sorted["CountryName"] == cp["country"]].index
+            _rank_num = int(_rank_idx[0]) + 1 if len(_rank_idx) > 0 else 0
+            _total = len(_wdf_sorted)
+            # Show only nearest 20 countries around the selected one
+            _lo = max(0, _rank_num - 11)
+            _hi = min(_total, _rank_num + 9)
+            _slice = _wdf_sorted.iloc[_lo:_hi]
+            _colors_rank = ["#22d3a0" if n == cp["country"] else ("#f87171" if w < 0 else "#2563eb")
+                            for n, w in zip(_slice["CountryName"], _slice["welfare"])]
+            fig_rank = go.Figure(go.Bar(
+                x=_slice["welfare"], y=_slice["CountryName"],
+                orientation="h", marker_color=_colors_rank,
+                text=[f"◀ {w:+.2f}%" if n == cp["country"] else f"{w:+.2f}%" for n, w in zip(_slice["CountryName"], _slice["welfare"])],
+                textposition="outside",
+            ))
+            fig_rank.update_layout(**PLOTLY_THEME, height=320,
+                title=f"{cp['country']} ranks #{_rank_num} of {_total} by welfare change (green = selected)",
+                xaxis_title="Welfare Change (%)", showlegend=False)
+            st.plotly_chart(fig_rank, use_container_width=True)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -382,23 +776,18 @@ with tab1:
 with tab2:
     pharma_df, monthly_cols = load_pharma1()
     dep, src, burd, exp = load_pharma_outputs()
+    risk, top_sup, hts_exp, pharma_stats = load_pharma_risk()
 
-    # KPIs
     total_2025 = pharma_df[pharma_df["Year"] == 2025]["annual_total"].sum()
     total_2024 = pharma_df[pharma_df["Year"] == 2024]["annual_total"].sum()
-    top_country = dep.iloc[0]["country"]
-    top_share   = dep.iloc[0]["share_2025_pct"]
-    top_tariff  = dep.iloc[0]["tariff_pct"]
-    burden_q1   = float(burd[burd["group"].str.contains("Q1")]["burden_pct_income"].iloc[0]) * 100
-    burden_q5   = float(burd[burd["group"].str.contains("Q5")]["burden_pct_income"].iloc[0]) * 100
 
     kpi2 = [
-        ("2025 US Pharma Imports", f"${total_2025/1e9:.1f}B", "neutral", "Customs value"),
-        ("YoY Growth", f"{(total_2025/total_2024-1)*100:+.1f}%", "positive", "2024→2025"),
-        ("Top Supplier", top_country, "neutral", f"{top_share:.1f}% share"),
-        ("Top Supplier Tariff", f"{top_tariff:.0f}%", "warning", top_country),
-        ("Q1 Drug Burden", f"{burden_q1:.2f}%", "negative", "% of income"),
-        ("Q5 Drug Burden", f"{burden_q5:.2f}%", "positive", "% of income — 7x less"),
+        ("Total US Medicine Imports",      f"${total_2025/1e9:.0f}B",                     "neutral",   "2025 customs value"),
+        ("Year-on-Year Growth",             f"{(total_2025/total_2024-1)*100:+.1f}%",      "positive",  "2024 → 2025"),
+        ("Effective Pharma Tariff",         f"{pharma_stats['tau_pharma_eff']*100:.1f}%",  "negative",  "vs 2.4% pre-tariff"),
+        ("Medicine Import Drop (model)",    f"{pharma_stats['import_chg_noretal']:+.1f}%", "negative",  "GE model estimate"),
+        ("Drug Price Increase (model)",     f"+{pharma_stats['price_noretal']:.2f}%",      "negative",  "From tariff pass-through"),
+        ("Q1 vs Q5 Drug Cost Gap",          "6.9×",                                        "negative",  "Poorest pay 6.9× more"),
     ]
     cols2 = st.columns(6)
     for col, (label, val, cls, sub) in zip(cols2, kpi2):
@@ -412,31 +801,106 @@ with tab2:
 
     st.markdown("")
 
-    # ── Time series: monthly US pharma imports ─────────────────────────────
-    st.markdown('<div class="section-header">US Pharma Import Trends (2018–2025, Monthly)</div>', unsafe_allow_html=True)
+    # ── Country spotlight for Pharma tab ──────────────────────────────────────
+    if _country_profile:
+        cp = _country_profile
+        _ph_exp  = exp[exp["country"].str.lower().str.contains(cp["country"][:5].lower(), na=False)]
+        _ph_src  = src[src["country"].str.lower().str.contains(cp["country"][:5].lower(), na=False)]
+        _ph_risk = risk[risk["country"].str.lower().str.contains(cp["country"][:5].lower(), na=False)]
+        _ph_share  = float(_ph_exp["import_share_pct"].iloc[0])  if not _ph_exp.empty  else None
+        _ph_tariff = float(_ph_exp["tariff_pct"].iloc[0])        if not _ph_exp.empty  else cp["tariff"]
+        _ph_delta  = float(_ph_exp["delta_share_pp"].iloc[0])    if not _ph_exp.empty  else None
+        _ph_shift  = float(_ph_src["change_pp"].iloc[0])         if not _ph_src.empty  else None
+        _ph_tier   = _ph_risk["risk_tier"].iloc[0]               if not _ph_risk.empty else None
+        _tier_clr  = {"Very high": "#f87171", "High": "#fb923c", "Low": "#22d3a0"}.get(_ph_tier, "#60a5fa") if _ph_tier else "#60a5fa"
+
+        _ph_cells = []
+        if _ph_share is not None:
+            _ph_cells.append(f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Pharma Import Share</div><div style="color:#60a5fa;font-size:22px;font-weight:700">{_ph_share:.1f}%</div><div style="color:#475569;font-size:10px">of total US pharma imports</div></div>')
+        else:
+            _ph_cells.append(f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Pharma Import Share</div><div style="color:#475569;font-size:14px">Not a top supplier</div></div>')
+        if _ph_delta is not None:
+            _delta_clr = "#f87171" if _ph_delta < 0 else "#22d3a0"
+            _ph_cells.append(f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Post-Tariff Share Change</div><div style="color:{_delta_clr};font-size:22px;font-weight:700">{_ph_delta:+.2f}pp</div><div style="color:#475569;font-size:10px">shift in US pharma import share</div></div>')
+        else:
+            _ph_cells.append(f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Post-Tariff Share Change</div><div style="color:#475569;font-size:14px">No model data</div></div>')
+        if _ph_shift is not None:
+            _shift_clr = "#22d3a0" if _ph_shift > 0 else "#f87171"
+            _ph_cells.append(f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Supply Share Change</div><div style="color:{_shift_clr};font-size:22px;font-weight:700">{_ph_shift:+.2f}pp</div><div style="color:#475569;font-size:10px">shift in US pharma business</div></div>')
+        else:
+            _ph_cells.append(f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Supply Share Change</div><div style="color:#475569;font-size:14px">No sourcing data</div></div>')
+        _tier_txt = _ph_tier if _ph_tier else "Not classified"
+        _ph_cells.append(f'<div style="background:#0f172a;border-radius:8px;padding:10px;border-left:3px solid {_tier_clr}"><div style="color:#64748b;font-size:10px">Supply Chain Risk</div><div style="color:{_tier_clr};font-size:18px;font-weight:700">{_tier_txt}</div><div style="color:#475569;font-size:10px">risk tier classification</div></div>')
+
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#0d2218,#1a1d2e);border:2px solid #22d3a0;border-radius:12px;padding:16px;margin-bottom:16px">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+            f'<div style="background:#22d3a0;color:#0d2218;font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:20px">PHARMA FOCUS</div>'
+            f'<div style="color:#e2e8f0;font-size:20px;font-weight:700">{cp["country"]}</div>'
+            f'<div style="color:#64748b;font-size:13px;margin-left:auto">US pharma tariff on this country: <span style="color:#f87171;font-weight:700">{_ph_tariff:.0f}%</span></div>'
+            f'</div>'
+            f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">'
+            + "".join(_ph_cells) +
+            f'</div></div>', unsafe_allow_html=True)
+
+        if _ph_shift is not None:
+            _gain_lose = "gaining" if _ph_shift > 0 else "losing"
+            _reason = "lower tariff makes it more competitive" if _ph_shift > 0 else "higher tariff is pushing US buyers to cheaper alternatives"
+            st.markdown(f'<div class="insight-box"><b>{cp["country"]} is {_gain_lose} US pharma business after Liberation Day</b> — {_reason}. The sourcing share changed by {_ph_shift:+.2f} percentage points.</div>', unsafe_allow_html=True)
+
+    # ── What types of medicines does the US import? ─────────────────────────
+    st.markdown('<div class="section-header">What types of medicines does the US import?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Three HTS product categories cover all US pharma imports. Biologics & vaccines and ready-made drugs together account for 99% of the total.</div>', unsafe_allow_html=True)
+
+    hts_labels = {3002: "Biologics & Vaccines (HTS 3002)", 3003: "Chemical Compounds (HTS 3003)", 3004: "Ready-Made Medicines (HTS 3004)"}
+    hts_exp_plot = hts_exp.copy()
+    hts_exp_plot["label"] = hts_exp_plot["hts"].map(hts_labels)
+    c_hts1, c_hts2 = st.columns([3, 2])
+    with c_hts1:
+        fig_hts_bar = go.Figure(go.Bar(
+            x=hts_exp_plot["import_share_pct"], y=hts_exp_plot["label"],
+            orientation="h",
+            marker_color=["#2563eb","#fbbf24","#22d3a0"],
+            text=[f"{v:.1f}%  (${bn:.0f}B)" for v, bn in zip(hts_exp_plot["import_share_pct"], hts_exp_plot["import_value_bn"])],
+            textposition="outside",
+        ))
+        fig_hts_bar.update_layout(**PLOTLY_THEME, height=220,
+            title=f"US Pharma Imports by Product Type (Total: ${hts_exp_plot['import_value_bn'].sum():.0f}B)",
+            xaxis_title="Share of Total Imports (%)")
+        fig_hts_bar.update_xaxes(range=[0, 70])
+        fig_hts_bar.update_yaxes(autorange="reversed")
+        st.plotly_chart(fig_hts_bar, use_container_width=True)
+    with c_hts2:
+        st.markdown("""
+        <div class="insight-box">
+        <b>HTS 3002</b> — Biologics & vaccines: $108B (51%)<br>
+        <b>HTS 3004</b> — Ready-made drugs: $100B (48%)<br>
+        <b>HTS 3003</b> — Chemical compounds: $2.4B (1%)<br><br>
+        All three face Liberation Day tariffs, with <b>no pharma exemption</b>.
+        </div>""", unsafe_allow_html=True)
+
+    # ── Monthly import trends ────────────────────────────────────────────────
+    st.markdown('<div class="section-header">US medicine import spending, 2018–2025</div>', unsafe_allow_html=True)
 
     hts_filter = st.multiselect(
-        "HTS Codes", [3002, 3003, 3004],
+        "Filter by HTS code", [3002, 3003, 3004],
         default=[3002, 3003, 3004],
-        format_func=lambda x: {3002:"3002 – Vaccines & Blood", 3003:"3003 – Unmixed Medicaments", 3004:"3004 – Formulated Drugs"}[x]
+        format_func=lambda x: {3002:"3002 – Biologics & Vaccines", 3003:"3003 – Chemical Compounds", 3004:"3004 – Ready-Made Drugs"}[x]
     )
-
     ts_df = pharma_df[pharma_df["HTS Number"].isin(hts_filter)].copy()
-    # Build monthly time series
-    rows = []
+    rows_ts = []
     for _, row in ts_df.iterrows():
         yr = int(row["Year"]) if not pd.isna(row["Year"]) else None
         if yr is None: continue
         for mi, m in enumerate(monthly_cols, 1):
             val = pd.to_numeric(row[m], errors="coerce")
             if pd.notna(val) and val > 0:
-                rows.append({"year": yr, "month": mi, "value": val, "hts": int(row["HTS Number"])})
-    ts = pd.DataFrame(rows)
+                rows_ts.append({"year": yr, "month": mi, "value": val, "hts": int(row["HTS Number"])})
+    ts = pd.DataFrame(rows_ts)
     if not ts.empty:
         ts["date"] = pd.to_datetime(ts[["year","month"]].assign(day=1).rename(columns={"year":"year","month":"month"}))
         ts_agg = ts.groupby(["date","hts"])["value"].sum().reset_index()
         ts_agg["value_bn"] = ts_agg["value"] / 1e9
-
         fig_ts = px.line(ts_agg, x="date", y="value_bn", color="hts",
             color_discrete_sequence=["#2563eb","#22d3a0","#fbbf24"],
             labels={"value_bn":"Import Value ($B)", "date":"Date", "hts":"HTS Code"},
@@ -446,132 +910,198 @@ with tab2:
             annotation_text="Liberation Day", annotation_position="top left",
             annotation_font_color="#f87171")
         fig_ts.update_traces(line_width=2)
-        apply_theme(fig_ts, 340)
+        apply_theme(fig_ts, 320)
         st.plotly_chart(fig_ts, use_container_width=True)
 
-    # ── Top suppliers + sourcing shifts ───────────────────────────────────
-    st.markdown('<div class="section-header">Supplier Dependence & Sourcing Shifts</div>', unsafe_allow_html=True)
+    # ── Supplier dependence + rank changes ──────────────────────────────────
+    st.markdown('<div class="section-header">Where does the US buy its medicines — and who\'s moving up or down?</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
 
     with c1:
+        tier_colors = {"Very high": "#f87171", "High": "#fb923c", "Low": "#22d3a0"}
+        exp_top = exp.head(15).copy()
+        # Include selected country even if outside top 15
+        _sel_pharma_name = _country_profile["country"] if _country_profile else None
+        if _sel_pharma_name and not exp_top["country"].str.lower().str.contains(_sel_pharma_name[:5].lower(), na=False).any():
+            _sel_ph_row = exp[exp["country"].str.lower().str.contains(_sel_pharma_name[:5].lower(), na=False)]
+            if not _sel_ph_row.empty:
+                exp_top = pd.concat([exp_top, _sel_ph_row]).reset_index(drop=True)
+        bar_c_risk = []
+        for ctry in exp_top["country"]:
+            if _sel_pharma_name and _sel_pharma_name[:5].lower() in ctry.lower():
+                bar_c_risk.append("#ffffff")
+            else:
+                tier = risk[risk["country"] == ctry]["risk_tier"].values
+                bar_c_risk.append(tier_colors.get(tier[0] if len(tier) > 0 else "Low", "#60a5fa"))
+        _dep_hl_lines = ["#22d3a0" if (_sel_pharma_name and _sel_pharma_name[:5].lower() in ctry.lower()) else "rgba(0,0,0,0)" for ctry in exp_top["country"]]
+        _dep_hl_widths = [3 if (_sel_pharma_name and _sel_pharma_name[:5].lower() in ctry.lower()) else 0 for ctry in exp_top["country"]]
         fig_dep = go.Figure(go.Bar(
-            x=dep["share_2025_pct"], y=dep["country"],
-            orientation="h",
-            marker=dict(
-                color=dep["tariff_pct"],
-                colorscale=[[0,"#22d3a0"],[0.5,"#fbbf24"],[1,"#f87171"]],
-                cmin=0, cmax=35,
-                colorbar=dict(title="Tariff %", tickfont=dict(color="#94a3b8"),
-                              title_font=dict(color="#94a3b8")),
-            ),
-            text=[f"{s:.1f}% | {t:.0f}% tariff" for s,t in zip(dep["share_2025_pct"], dep["tariff_pct"])],
+            x=exp_top["import_share_pct"], y=exp_top["country"],
+            orientation="h", marker_color=bar_c_risk,
+            marker_line_color=_dep_hl_lines, marker_line_width=_dep_hl_widths,
+            text=[f"◀ {s:.1f}% share | {t:.0f}% tariff — selected" if (_sel_pharma_name and _sel_pharma_name[:5].lower() in ctry.lower()) else f"{s:.1f}% share | {t:.0f}% tariff" for s, t, ctry in zip(exp_top["import_share_pct"], exp_top["tariff_pct"], exp_top["country"])],
             textposition="outside",
         ))
-        fig_dep.update_layout(**PLOTLY_THEME, height=380,
-            title="Top 10 Suppliers by Import Share (2025)",
+        _dep_title = f"Top 15 Suppliers — {_sel_pharma_name} highlighted" if _sel_pharma_name else "Top 15 Suppliers (red=Very High risk, orange=High, green=Low)"
+        fig_dep.update_layout(**PLOTLY_THEME, height=420,
+            title=_dep_title,
             xaxis_title="Import Share %")
         fig_dep.update_yaxes(autorange="reversed")
         st.plotly_chart(fig_dep, use_container_width=True)
 
     with c2:
-        src_top = src.head(15).copy()
-        colors_shift = ["#22d3a0" if v >= 0 else "#f87171" for v in src_top["change_pp"]]
-        fig_src = go.Figure(go.Bar(
-            x=src_top["change_pp"], y=src_top["country"],
-            orientation="h",
-            marker_color=colors_shift,
-            text=[f"{v:+.2f}pp" for v in src_top["change_pp"]],
-            textposition="outside",
-        ))
-        fig_src.add_vline(x=0, line_color="#4b5563", line_width=1)
-        fig_src.update_layout(**PLOTLY_THEME, height=380,
-            title="Sourcing Share Shift (Post-Tariff vs Pre-Tariff)",
-            xaxis_title="Change in Share (percentage points)")
-        fig_src.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig_src, use_container_width=True)
+        arrow_fn = lambda d: "▲" if d > 0 else ("▼" if d < 0 else "→")
+        ts_rank = top_sup.copy()
+        ts_rank["Rank Change"] = ts_rank["rank_change"].apply(lambda x: f"{arrow_fn(x)} {abs(int(x))}" if x != 0 else "→ 0")
+        ts_rank["Imports"] = ts_rank.apply(lambda r: f"${r['imports_2024_bn']:.0f}B → ${r['imports_2025_bn']:.0f}B", axis=1)
+        disp_sup = ts_rank[["country","rank_2024","rank_2025","Rank Change","Imports"]].copy()
+        disp_sup.columns = ["Country","2024 Rank","2025 Rank","Rank Δ","Imports ($B)"]
+        st.markdown("<br><b>How suppliers are reshuffling after tariffs</b>", unsafe_allow_html=True)
+        st.dataframe(disp_sup, use_container_width=True, hide_index=True)
+        st.markdown('<div class="insight-box">Singapore dropped 5 places as its 10% tariff (low, but high absolute value) squeezes margins. Germany rose 2 places as trade reroutes. Ireland stays #1 but its share is shrinking.</div>', unsafe_allow_html=True)
 
-    # ── Consumer burden by income quintile ────────────────────────────────
-    st.markdown('<div class="section-header">Pharma Tariff Burden by Income Quintile</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">The tariff burden is highly regressive: Q1 (lowest income) bears <b>7× more</b> cost as a share of income than Q5. This is because lower-income households spend a higher fraction of their budget on prescription drugs.</div>', unsafe_allow_html=True)
+    # ── Risk tier chart ──────────────────────────────────────────────────────
+    st.markdown('<div class="section-header">Which suppliers are riskiest for the US?</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="insight-box">Risk = high import share + high tariff. Ireland supplies 26% of US medicines at a 20% tariff — the top supply chain concentration risk. The HHI score rose from {pharma_stats["hhi_pre"]:.0f} (pre-tariff) to {pharma_stats["hhi_post"]:.0f} (post-tariff), meaning supply is becoming more concentrated.</div>', unsafe_allow_html=True)
 
+    tier_order = {"Very high": 0, "High": 1, "Low": 2}
+    risk_sorted = risk.sort_values(by="risk_tier", key=lambda x: x.map(tier_order))
+    risk_colors_t2 = [tier_colors.get(t, "#60a5fa") for t in risk_sorted["risk_tier"]]
+    fig_risk = go.Figure(go.Bar(
+        x=risk_sorted["pre_tariff_share_pct"], y=risk_sorted["country"],
+        orientation="h", marker_color=risk_colors_t2,
+        text=[f"{s:.1f}% share | {t:.0f}% tariff | {tier}" for s, t, tier in zip(
+            risk_sorted["pre_tariff_share_pct"], risk_sorted["tariff_pct"], risk_sorted["risk_tier"])],
+        textposition="outside",
+    ))
+    fig_risk.update_layout(**PLOTLY_THEME, height=400,
+        title="Supply Chain Risk: Import Share vs Tariff Rate",
+        xaxis_title="Pre-Tariff Import Share (%)")
+    fig_risk.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig_risk, use_container_width=True)
+
+    # ── Sourcing shifts ──────────────────────────────────────────────────────
+    st.markdown('<div class="section-header">Who gains and who loses US pharma business after tariffs?</div>', unsafe_allow_html=True)
+    src_plot = src.head(20).copy()
+    _sel_src_name = _country_profile["country"] if _country_profile else None
+    # Include selected country if not in top 20
+    if _sel_src_name and not src_plot["country"].str.lower().str.contains(_sel_src_name[:5].lower(), na=False).any():
+        _sel_src_row = src[src["country"].str.lower().str.contains(_sel_src_name[:5].lower(), na=False)]
+        if not _sel_src_row.empty:
+            src_plot = pd.concat([src_plot, _sel_src_row]).reset_index(drop=True)
+    _src_colors = []
+    _src_hl_lines = []
+    _src_hl_widths = []
+    for ctry, v in zip(src_plot["country"], src_plot["change_pp"]):
+        is_sel = _sel_src_name and _sel_src_name[:5].lower() in ctry.lower()
+        _src_colors.append("#ffffff" if is_sel else ("#22d3a0" if v >= 0 else "#f87171"))
+        _src_hl_lines.append("#22d3a0" if is_sel else "rgba(0,0,0,0)")
+        _src_hl_widths.append(3 if is_sel else 0)
+    fig_src = go.Figure(go.Bar(
+        x=src_plot["change_pp"], y=src_plot["country"],
+        orientation="h",
+        marker_color=_src_colors,
+        marker_line_color=_src_hl_lines, marker_line_width=_src_hl_widths,
+        text=[f"◀ {v:+.2f}pp — selected" if (_sel_src_name and _sel_src_name[:5].lower() in ctry.lower()) else f"{v:+.2f}pp" for ctry, v in zip(src_plot["country"], src_plot["change_pp"])],
+        textposition="outside",
+    ))
+    fig_src.add_vline(x=0, line_color="#4b5563", line_width=1)
+    _src_title = f"Change in US Pharma Import Share — {_sel_src_name} highlighted" if _sel_src_name else "Change in US Pharma Import Share After Tariffs (percentage points)"
+    fig_src.update_layout(**PLOTLY_THEME, height=440,
+        title=_src_title,
+        xaxis_title="Change in Import Share (pp)")
+    fig_src.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig_src, use_container_width=True)
+
+    # ── Drug price impact ────────────────────────────────────────────────────
+    st.markdown('<div class="section-header">Do tariffs raise drug prices?</div>', unsafe_allow_html=True)
+    c_p1, c_p2, c_p3 = st.columns(3)
+    with c_p1:
+        st.markdown(f"""
+        <div class="kpi-card">
+          <div class="kpi-label">Average Tariff Before Liberation Day</div>
+          <div class="kpi-value neutral" style="font-size:28px">{pharma_stats['hts8_pharma_rate']*100:.1f}%</div>
+          <div class="kpi-sub">HTS8 average, pre-tariff</div>
+        </div>""", unsafe_allow_html=True)
+    with c_p2:
+        st.markdown(f"""
+        <div class="kpi-card">
+          <div class="kpi-label">Effective Tariff After Liberation Day</div>
+          <div class="kpi-value negative" style="font-size:28px">{pharma_stats['tau_pharma_eff']*100:.1f}%</div>
+          <div class="kpi-sub">8× jump in the effective rate</div>
+        </div>""", unsafe_allow_html=True)
+    with c_p3:
+        st.markdown(f"""
+        <div class="kpi-card">
+          <div class="kpi-label">Resulting Drug Price Increase</div>
+          <div class="kpi-value negative" style="font-size:28px">+{pharma_stats['price_noretal']:.2f}%</div>
+          <div class="kpi-sub">IO multiplier: {pharma_stats['io_multiplier']:.2f}× amplifies the tariff cost</div>
+        </div>""", unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The supply chain multiplier of 1.07 means that every $1 in tariff costs gets amplified: drugs depend on imported chemical precursors that also face tariffs. Medicine imports are projected to fall by 38.2%.</div>', unsafe_allow_html=True)
+
+    # ── Who pays the most in higher drug costs? ──────────────────────────────
+    st.markdown('<div class="section-header">Who pays the most in higher drug costs?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The pharma tariff burden is deeply regressive — the poorest households pay 6.9× more of their income on drug cost increases than the wealthiest. Low-income households spend a larger share of income on prescription drugs and cannot substitute.</div>', unsafe_allow_html=True)
+
+    quintile_labels_p = ["Lowest 20%", "Lower-Middle", "Middle", "Upper-Middle", "Top 20%"]
     c3, c4 = st.columns(2)
     with c3:
         fig_burd = go.Figure(go.Bar(
-            x=burd["group"], y=burd["burden_pct_income"] * 100,
+            x=quintile_labels_p,
+            y=list(burd["burden_pct_income"]),
             marker_color=["#f87171","#fb923c","#fbbf24","#a3e635","#22d3a0"],
-            text=[f"{v*100:.3f}%" for v in burd["burden_pct_income"]],
+            text=[f"{v:.3f}%" for v in burd["burden_pct_income"]],
             textposition="outside",
         ))
         fig_burd.update_layout(**PLOTLY_THEME, height=320,
-            title="Drug Tariff Burden as % of Income",
-            yaxis_title="% of Annual Income",
-            xaxis_title="Income Quintile")
+            title="Drug Tariff Burden as % of Annual Income",
+            yaxis_title="% of Annual Income", xaxis_title="Income Group")
         st.plotly_chart(fig_burd, use_container_width=True)
 
     with c4:
         fig_spend = go.Figure()
         fig_spend.add_trace(go.Bar(
             name="Annual Drug Spending",
-            x=burd["group"], y=burd["annual_drug_spending_usd"],
+            x=quintile_labels_p, y=burd["annual_drug_spending_usd"],
             marker_color="#2563eb",
         ))
         fig_spend.add_trace(go.Bar(
             name="Extra Cost from Tariffs",
-            x=burd["group"], y=burd["extra_cost_from_tariffs_usd"],
+            x=quintile_labels_p, y=burd["extra_cost_from_tariffs_usd"],
             marker_color="#f87171",
         ))
         fig_spend.update_layout(**PLOTLY_THEME, height=320,
-            title="Annual Drug Spending vs Tariff Cost (USD)",
+            title="Drug Spending vs Tariff Cost per Household (USD/year)",
             barmode="group", yaxis_title="USD per Household",
             legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
         st.plotly_chart(fig_spend, use_container_width=True)
-
-    # ── Country exposure map ───────────────────────────────────────────────
-    st.markdown('<div class="section-header">Global Pharma Import Exposure (2024)</div>', unsafe_allow_html=True)
-    fig_pmap = px.choropleth(
-        exp, locations="iso3", color="import_share_pct",
-        hover_name="country",
-        hover_data={"tariff_pct": True, "import_value_usd": True, "iso3": False},
-        color_continuous_scale=["#1a1d2e","#1e3a5f","#2563eb","#60a5fa","#bfdbfe"],
-        labels={"import_share_pct": "Import Share %"},
-    )
-    fig_pmap.update_traces(
-        marker_line_color="#0f1117", marker_line_width=0.3,
-        hovertemplate="<b>%{hovertext}</b><br>Share: %{z:.2f}%<br>Tariff: %{customdata[0]:.0f}%<extra></extra>"
-    )
-    fig_pmap.update_layout(
-        **PLOTLY_THEME, height=400,
-        geo=dict(bgcolor="#0f1117", showframe=False, showcoastlines=True,
-                 coastlinecolor="#2d3250", showland=True, landcolor="#1a1d2e",
-                 showocean=True, oceancolor="#0f1117",
-                 projection_type="natural earth"),
-        coloraxis_colorbar=dict(title="Share %", tickfont=dict(color="#94a3b8"),
-                                title_font=dict(color="#94a3b8")),
-    )
-    st.plotly_chart(fig_pmap, use_container_width=True)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 3 — RETAIL & CONSUMER PRICES
 # ═════════════════════════════════════════════════════════════════════════════
 with tab3:
-    prices, cavallo = load_retail()
+    cavallo, retail_stats = load_retail()
 
-    # KPIs
-    avg_increase = prices["pct_increase"].mean()
-    max_cat = prices.groupby("Product Type")["pct_increase"].mean().idxmax()
-    max_cat_val = prices.groupby("Product Type")["pct_increase"].mean().max()
-    cavallo_us_latest = (cavallo["index_usa"].iloc[-1] - 1) * 100
-    cavallo_cn_latest = (cavallo["index_china"].iloc[-1] - 1) * 100
-    regressivity = 8.40 / 5.94  # from paper results
+    ge_cpi        = retail_stats["ge_cpi_noretal"]
+    ge_cpi_retal  = retail_stats["ge_cpi_retal"]
+    ge_welfare    = retail_stats["ge_welfare_noretal"]
+    ge_welfare_r  = retail_stats["ge_welfare_retal"]
+    first_order   = retail_stats["first_order_cpi"]
+    passthrough   = retail_stats["retail_product_passthrough"]
+    regress_ratio = retail_stats["regress_ratio"]
+    q_noretal     = retail_stats["quintile_incidence_noretal"]
+    q_retal       = retail_stats["quintile_incidence_retal"]
+    cav_30d       = retail_stats["cavallo_usa_30d"] * 100
+    cav_90d       = retail_stats["cavallo_usa_90d"] * 100
 
     kpi3 = [
-        ("Avg Retail Price Increase", f"+{avg_increase:.1f}%", "negative", "Across all categories"),
-        ("Highest Category", max_cat, "warning", f"+{max_cat_val:.1f}% avg"),
-        ("US Price Index Change", f"+{cavallo_us_latest:.2f}%", "negative", "Oct 2024 → Feb 2026"),
-        ("China Price Index Change", f"+{cavallo_cn_latest:.2f}%", "neutral", "Same period"),
-        ("Regressivity Ratio", f"{regressivity:.2f}×", "negative", "Q1 burden / Q5 burden"),
-        ("GE Dampening Factor", "0.52×", "positive", "GE vs naïve first-order"),
+        ("Expected Price Rise\n(before trade adjusts)",  f"+{first_order:.1f}%",        "negative", "First-order naïve estimate"),
+        ("Actual Modelled Price Rise",                   f"+{ge_cpi:.1f}%",             "warning",  "General equilibrium model"),
+        ("Share Passed to Consumers",                    f"{passthrough*100:.1f}%",     "neutral",  "Of tariff cost"),
+        ("Extra Burden on Lowest Earners",               f"{regress_ratio:.2f}×",       "negative", "Q1 pays more than Q5"),
+        ("US Prices — First 30 Days",                    f"+{cav_30d:.2f}%",            "warning",  "Cavallo et al. data"),
+        ("US Prices — First 90 Days",                    f"+{cav_90d:.2f}%",            "warning",  "Cavallo et al. data"),
     ]
     cols3 = st.columns(6)
     for col, (label, val, cls, sub) in zip(cols3, kpi3):
@@ -579,25 +1109,58 @@ with tab3:
             st.markdown(f"""
             <div class="kpi-card">
               <div class="kpi-label">{label}</div>
-              <div class="kpi-value {cls}" style="font-size:22px">{val}</div>
+              <div class="kpi-value {cls}" style="font-size:20px">{val}</div>
               <div class="kpi-sub">{sub}</div>
             </div>""", unsafe_allow_html=True)
 
     st.markdown("")
 
-    # ── Cavallo daily price indices ────────────────────────────────────────
-    st.markdown('<div class="section-header">Daily Price Indices: US vs Trading Partners (Cavallo et al.)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">Liberation Day was April 2, 2025. US prices are rising faster than Canada and Mexico but tracking China, suggesting tariff pass-through in goods categories.</div>', unsafe_allow_html=True)
+    # ── Country spotlight for Retail tab ──────────────────────────────────────
+    if _country_profile:
+        cp = _country_profile
+        # Cavallo tracks USA, Canada, Mexico, China — flag if selected is one of these
+        _cav_map = {"United States": "index_usa", "Canada": "index_canada", "Mexico": "index_mexico", "China": "index_china"}
+        _in_cavallo = cp["country"] in _cav_map
+
+        _w_dir  = "grew" if cp["welfare"] > 0 else "shrank"
+        _p_dir  = "fell" if cp["cpi"] < 0 else "rose"
+        _x_dir  = "rose" if cp["exp"] > 0 else "fell"
+
+        _cells_t3 = [
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Economy {_w_dir}</div><div style="color:{"#22d3a0" if cp["welfare"]>0 else "#f87171"};font-size:22px;font-weight:700">{cp["welfare"]:+.2f}%</div><div style="color:#475569;font-size:10px">real income change (GE model)</div></div>',
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Domestic prices {_p_dir}</div><div style="color:#fbbf24;font-size:22px;font-weight:700">{cp["cpi"]:+.1f}%</div><div style="color:#475569;font-size:10px">consumer price change</div></div>',
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Exports to US {_x_dir}</div><div style="color:#60a5fa;font-size:22px;font-weight:700">{cp["exp"]:+.1f}%</div><div style="color:#475569;font-size:10px">change in exports/GDP</div></div>',
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px;border-left:3px solid {"#22d3a0" if _in_cavallo else "#2d3250"}"><div style="color:#64748b;font-size:10px">Cavallo price tracker</div><div style="color:{"#22d3a0" if _in_cavallo else "#475569"};font-size:16px;font-weight:700">{"Tracked ↗" if _in_cavallo else "Not tracked"}</div><div style="color:#475569;font-size:10px">{"in daily price chart below" if _in_cavallo else "daily data for US, CA, MX, CN only"}</div></div>',
+        ]
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#0d1a2e,#1a1d2e);border:2px solid #2563eb;border-radius:12px;padding:16px;margin-bottom:16px">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+            f'<div style="background:#2563eb;color:#fff;font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:20px">RETAIL FOCUS</div>'
+            f'<div style="color:#e2e8f0;font-size:20px;font-weight:700">{cp["country"]}</div>'
+            f'<div style="color:#64748b;font-size:13px;margin-left:auto">US tariff on this country: <span style="color:#f87171;font-weight:700">{cp["tariff"]:.0f}%</span></div>'
+            f'</div>'
+            f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">'
+            + "".join(_cells_t3) +
+            f'</div>'
+            f'<div style="margin-top:10px;color:#64748b;font-size:12px;line-height:1.5">'
+            f'The charts below show US consumer price data. {cp["country"]}\'s economy {_w_dir} by {abs(cp["welfare"]):.2f}% and its domestic prices {_p_dir} by {abs(cp["cpi"]):.1f}% — these are the spillover effects of US tariff policy on trading partners.'
+            + (f' {cp["country"]} appears in the daily price tracker chart — look for it in the line chart below.' if _in_cavallo else '') +
+            f'</div>'
+            f'</div>', unsafe_allow_html=True)
+
+    # ── How did prices actually change? ─────────────────────────────────────
+    st.markdown('<div class="section-header">How did prices actually change?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Prices indexed to Oct 2024 = 0%. After Liberation Day (Apr 2, 2025) US prices rose while Chinese export prices fell — Chinese manufacturers cut prices to stay competitive despite the 54% US tariff.</div>', unsafe_allow_html=True)
 
     fig_cav = go.Figure()
-    country_map = {
-        "index_usa":    ("United States", "#2563eb", 2.5),
-        "index_canada": ("Canada",        "#22d3a0", 1.5),
-        "index_mexico": ("Mexico",        "#fbbf24", 1.5),
-        "index_china":  ("China",         "#f87171", 1.5),
-    }
-    for col, (name, color, width) in country_map.items():
-        pct = (cavallo[col] - 1) * 100
+    country_traces_t3 = [
+        ("index_usa",    "United States", "#2563eb", 2.5),
+        ("index_canada", "Canada",        "#22d3a0", 1.5),
+        ("index_mexico", "Mexico",        "#fbbf24", 1.5),
+        ("index_china",  "China",         "#f87171", 1.5),
+    ]
+    for col_name, name, color, width in country_traces_t3:
+        pct = (cavallo[col_name] - 1) * 100
         fig_cav.add_trace(go.Scatter(
             x=cavallo["date"], y=pct, name=name,
             line=dict(color=color, width=width),
@@ -607,91 +1170,124 @@ with tab3:
         annotation_text="Liberation Day (Apr 2)", annotation_position="top right",
         annotation_font_color="#f87171")
     fig_cav.update_layout(**PLOTLY_THEME, height=380,
-        title="Price Index Level (Oct 2024 = 0%)",
+        title="Daily Price Tracker vs Trading Partners (Oct 2024 = 0%)",
         yaxis_title="% Change from Baseline",
         legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
     st.plotly_chart(fig_cav, use_container_width=True)
 
-    # ── Product price changes ──────────────────────────────────────────────
-    st.markdown('<div class="section-header">Retail Product Price Changes by Category</div>', unsafe_allow_html=True)
-    c1, c2 = st.columns([3, 2])
+    # ── Why was the price rise smaller than expected? ──────────────────────
+    st.markdown('<div class="section-header">Why was the price rise smaller than expected?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The naïve estimate assumed all tariff costs passed directly to consumers. In reality, exporters cut prices, trade flows rerouted, and some purchases switched to domestic goods — reducing the actual impact from 13.6% to 7.1% in the model and to ~0.1% in early empirical data.</div>', unsafe_allow_html=True)
 
-    with c1:
-        cat_stats = prices.groupby("Product Type").agg(
-            avg_before=("Price Before Tariff","mean"),
-            avg_after=("Price After Tariff","mean"),
-            avg_pct=("pct_increase","mean"),
-            count=("Product Name","count"),
-        ).reset_index().sort_values("avg_pct", ascending=False)
+    estimates_t3 = ["First-order estimate\n(naïve, no trade response)", f"General equilibrium\nmodel (trade rerouting)", f"Empirical data\n(Cavallo, 90 days)"]
+    estimate_vals_t3 = [first_order, ge_cpi, cav_90d]
+    fig_est = go.Figure(go.Bar(
+        x=estimates_t3, y=estimate_vals_t3,
+        marker_color=["#f87171","#fbbf24","#22d3a0"],
+        text=[f"+{v:.2f}%" for v in estimate_vals_t3],
+        textposition="outside",
+    ))
+    fig_est.update_layout(**PLOTLY_THEME, height=320,
+        title="Three Price Estimates: Naïve vs Model vs Empirical",
+        yaxis_title="% Price Increase")
+    fig_est.update_yaxes(range=[0, first_order * 1.25])
+    st.plotly_chart(fig_est, use_container_width=True)
 
-        fig_cat = go.Figure()
-        fig_cat.add_trace(go.Bar(
-            name="Before Tariff", x=cat_stats["Product Type"], y=cat_stats["avg_before"],
-            marker_color="#2563eb",
-        ))
-        fig_cat.add_trace(go.Bar(
-            name="After Tariff", x=cat_stats["Product Type"], y=cat_stats["avg_after"],
+    # ── Who pays more — rich or poor? ─────────────────────────────────────
+    st.markdown('<div class="section-header">Who pays more — rich or poor households?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The poorest fifth of households face an 8.4% consumer price burden vs 5.9% for the wealthiest (no retaliation scenario). With retaliation, all quintiles pay less but the US economy shrinks.</div>', unsafe_allow_html=True)
+
+    quintile_labels_t3 = ["Lowest 20%", "Lower-Middle", "Middle", "Upper-Middle", "Top 20%"]
+    c_q1, c_q2 = st.columns(2)
+
+    with c_q1:
+        fig_q = go.Figure()
+        fig_q.add_trace(go.Bar(
+            name="No Retaliation",
+            x=quintile_labels_t3, y=q_noretal,
             marker_color="#f87171",
+            text=[f"{v:.2f}%" for v in q_noretal], textposition="outside",
         ))
-        fig_cat.update_layout(**PLOTLY_THEME, height=340,
-            title="Average Price Before vs After Tariff",
-            barmode="group", yaxis_title="Average Price (₹)",
+        fig_q.add_trace(go.Bar(
+            name="With Retaliation",
+            x=quintile_labels_t3, y=q_retal,
+            marker_color="#fbbf24",
+            text=[f"{v:.2f}%" for v in q_retal], textposition="outside",
+        ))
+        fig_q.update_layout(**PLOTLY_THEME, height=340,
+            title="Consumer Price Burden by Income Group",
+            barmode="group", yaxis_title="% Burden",
             legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
-        st.plotly_chart(fig_cat, use_container_width=True)
-
-    with c2:
-        fig_pct = go.Figure(go.Bar(
-            x=cat_stats["avg_pct"], y=cat_stats["Product Type"],
-            orientation="h",
-            marker_color=["#f87171" if v > 35 else "#fbbf24" if v > 25 else "#22d3a0"
-                          for v in cat_stats["avg_pct"]],
-            text=[f"+{v:.1f}%" for v in cat_stats["avg_pct"]],
-            textposition="outside",
-        ))
-        fig_pct.update_layout(**PLOTLY_THEME, height=340,
-            title="Avg % Price Increase by Category",
-            xaxis_title="% Increase")
-        fig_pct.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig_pct, use_container_width=True)
-
-    # ── Price distribution ─────────────────────────────────────────────────
-    st.markdown('<div class="section-header">Price Increase Distribution</div>', unsafe_allow_html=True)
-    cat_sel = st.multiselect(
-        "Filter by category", prices["Product Type"].unique().tolist(),
-        default=prices["Product Type"].unique().tolist()
-    )
-    filtered = prices[prices["Product Type"].isin(cat_sel)]
-
-    c3, c4 = st.columns(2)
-    with c3:
-        fig_hist = px.histogram(
-            filtered, x="pct_increase", color="Product Type",
-            nbins=40, opacity=0.75,
-            color_discrete_sequence=["#2563eb","#22d3a0","#fbbf24","#f87171","#a78bfa"],
-            labels={"pct_increase": "% Price Increase"},
-        )
-        fig_hist.update_layout(**PLOTLY_THEME, height=320,
-            title="Distribution of % Price Increases",
-            xaxis_title="% Price Increase", yaxis_title="Count",
-            legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
-        st.plotly_chart(fig_hist, use_container_width=True)
-
-    with c4:
-        quintile_data = {
-            "Quintile": ["Q1 (Poorest)", "Q2", "Q3", "Q4", "Q5 (Richest)"],
-            "Burden":   [8.40, 7.20, 6.80, 6.30, 5.94],
-        }
-        qdf = pd.DataFrame(quintile_data)
-        fig_q = go.Figure(go.Bar(
-            x=qdf["Quintile"], y=qdf["Burden"],
-            marker_color=["#f87171","#fb923c","#fbbf24","#a3e635","#22d3a0"],
-            text=[f"{v:.2f}%" for v in qdf["Burden"]],
-            textposition="outside",
-        ))
-        fig_q.update_layout(**PLOTLY_THEME, height=320,
-            title="Tariff Burden as % of Household Budget",
-            yaxis_title="% of Budget", xaxis_title="Income Quintile")
         st.plotly_chart(fig_q, use_container_width=True)
+
+    with c_q2:
+        qdf_table = pd.DataFrame({
+            "Household Group":   quintile_labels_t3,
+            "No Retaliation":    [f"{v:.2f}%" for v in q_noretal],
+            "With Retaliation":  [f"{v:.2f}%" for v in q_retal],
+            "Difference":        [f"{(n-r):+.2f}pp" for n, r in zip(q_noretal, q_retal)],
+        })
+        st.markdown("<br><b>Detailed burden table</b>", unsafe_allow_html=True)
+        st.dataframe(qdf_table, use_container_width=True, hide_index=True)
+
+    # ── What if other countries retaliate? ─────────────────────────────────
+    st.markdown('<div class="section-header">What if other countries retaliate?</div>', unsafe_allow_html=True)
+    c_r1, c_r2, c_r3, c_r4 = st.columns(4)
+    with c_r1:
+        st.markdown(f"""
+        <div class="kpi-card">
+          <div class="kpi-label">Consumer Prices — No Retaliation</div>
+          <div class="kpi-value negative" style="font-size:26px">+{ge_cpi:.1f}%</div>
+          <div class="kpi-sub">US CPI increase</div>
+        </div>""", unsafe_allow_html=True)
+    with c_r2:
+        st.markdown(f"""
+        <div class="kpi-card">
+          <div class="kpi-label">Consumer Prices — With Retaliation</div>
+          <div class="kpi-value warning" style="font-size:26px">+{ge_cpi_retal:.1f}%</div>
+          <div class="kpi-sub">Lower prices, but economy shrinks</div>
+        </div>""", unsafe_allow_html=True)
+    with c_r3:
+        welfare_cls = "positive" if ge_welfare > 0 else "negative"
+        st.markdown(f"""
+        <div class="kpi-card">
+          <div class="kpi-label">US Living Standards — No Retaliation</div>
+          <div class="kpi-value {welfare_cls}" style="font-size:26px">{ge_welfare:+.2f}%</div>
+          <div class="kpi-sub">Real income change</div>
+        </div>""", unsafe_allow_html=True)
+    with c_r4:
+        welfare_r_cls = "positive" if ge_welfare_r > 0 else "negative"
+        st.markdown(f"""
+        <div class="kpi-card">
+          <div class="kpi-label">US Living Standards — With Retaliation</div>
+          <div class="kpi-value {welfare_r_cls}" style="font-size:26px">{ge_welfare_r:+.2f}%</div>
+          <div class="kpi-sub">Real income change</div>
+        </div>""", unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">If trading partners retaliate, US consumer prices actually rise <i>less</i> (because import demand falls and exporters cut prices to compete). However, the US economy shrinks overall because US export markets shut down in response.</div>', unsafe_allow_html=True)
+
+    # ── US vs China: price divergence ──────────────────────────────────────
+    st.markdown('<div class="section-header">US vs China: prices moving in opposite directions</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">After Liberation Day, US prices rose while Chinese export prices fell. Chinese manufacturers absorbed much of the tariff cost by cutting prices to maintain competitiveness, rather than losing market share entirely.</div>', unsafe_allow_html=True)
+
+    lib_day = pd.Timestamp("2025-04-02")
+    cav_post = cavallo[cavallo["date"] >= lib_day].copy()
+    fig_div = go.Figure()
+    fig_div.add_trace(go.Scatter(
+        x=cav_post["date"], y=(cav_post["index_usa"] - 1) * 100,
+        name="United States", line=dict(color="#2563eb", width=2.5),
+        fill="tozeroy", fillcolor="rgba(37,99,235,0.10)",
+    ))
+    fig_div.add_trace(go.Scatter(
+        x=cav_post["date"], y=(cav_post["index_china"] - 1) * 100,
+        name="China", line=dict(color="#f87171", width=2.5),
+        fill="tozeroy", fillcolor="rgba(248,113,113,0.10)",
+    ))
+    fig_div.add_hline(y=0, line_color="#4b5563", line_width=1, line_dash="dot")
+    fig_div.update_layout(**PLOTLY_THEME, height=360,
+        title="US Rising, China Falling — Price Index Post Liberation Day (Oct 2024 = 0%)",
+        yaxis_title="% Change from Oct 2024 baseline",
+        legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
+    st.plotly_chart(fig_div, use_container_width=True)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -700,14 +1296,13 @@ with tab3:
 with tab4:
     naics, price_idx, shocks, hts, mfg_stats = load_manufacturing()
 
-    # KPIs
     kpi4 = [
-        ("Avg Mfg Tariff",      f"{mfg_stats['tau_mfg_avg']*100:.1f}%",    "negative", "Trade-weighted"),
-        ("Import Penetration",  f"{mfg_stats['import_penetration_mfg']*100:.1f}%","warning","Mfg sector"),
-        ("CPI Contribution",    f"+{mfg_stats['cpi_mfg_contribution']:.2f}pp","negative","Of +7.09% total"),
-        ("IO Multiplier",       f"{mfg_stats['io_mult_mfg']:.3f}×",          "warning", "Intermediate import"),
-        ("HTS8 Mfg Rate",       f"{mfg_stats['hts8_mfg_rate']*100:.1f}%",    "negative","Avg tariff rate"),
-        ("HTS8 Steel Rate",     f"{mfg_stats['hts8_steel_rate']*100:.1f}%",   "negative","Steel/aluminum"),
+        ("Average tariff on factory imports",     f"{mfg_stats['tau_mfg_avg']*100:.1f}%",          "negative", "Trade-weighted avg"),
+        ("Imports as % of factory output",        f"{mfg_stats['import_penetration_mfg']*100:.1f}%","warning",  "Import penetration"),
+        ("Factory tariffs' share of price rises", f"+{mfg_stats['cpi_mfg_contribution']:.1f}pp",   "negative", "Of +7.1pp total CPI"),
+        ("Supply chain multiplier",               f"{mfg_stats['io_mult_mfg']:.2f}×",              "warning",  "IO amplification"),
+        ("Drop in manufacturing imports",         f"{mfg_stats['mfg_import_change']:+.1f}%",        "negative", "GE model estimate"),
+        ("Pre-tariff HTS8 avg rate",              f"{mfg_stats['hts8_mfg_rate']*100:.1f}%",        "neutral",  "Before Liberation Day"),
     ]
     cols4 = st.columns(6)
     for col, (label, val, cls, sub) in zip(cols4, kpi4):
@@ -721,12 +1316,145 @@ with tab4:
 
     st.markdown("")
 
-    # ── NAICS gross output ─────────────────────────────────────────────────
-    st.markdown('<div class="section-header">Gross Output by NAICS Sector (BEA, 2016–2021)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">96% of the total +7.09pp CPI impact comes from manufacturing. The top 5 NAICS subsectors account for ~70% of the $6.32T manufacturing gross output base.</div>', unsafe_allow_html=True)
+    # ── Country spotlight for Manufacturing tab ────────────────────────────────
+    if _country_profile:
+        cp = _country_profile
+        _ct_row_mfg = _g_tariff_df[_g_tariff_df["CountryName"] == cp["country"]]
+        _mfg_tariff = float(_ct_row_mfg["tariff_pct"].iloc[0]) if not _ct_row_mfg.empty else cp["tariff"]
+
+        # US manufacturers' perspective: this country is a supplier/importer
+        _imp_dir = "more" if cp["imp"] > 0 else "less"
+        _exp_dir = "more" if cp["exp"] > 0 else "less"
+        _emp_dir = "gained" if cp["emp"] > 0 else "lost"
+
+        # Estimated cost increase for US factories importing from this country
+        _cost_increase = _mfg_tariff * mfg_stats.get("import_penetration_mfg", 0.323)
+
+        _cells_t4 = [
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">US tariff on goods from here</div><div style="color:#f87171;font-size:22px;font-weight:700">{_mfg_tariff:.0f}%</div><div style="color:#475569;font-size:10px">rate US factories pay to import</div></div>',
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Input cost uplift (est.)</div><div style="color:#fbbf24;font-size:22px;font-weight:700">+{_cost_increase:.1f}pp</div><div style="color:#475569;font-size:10px">tariff × import penetration</div></div>',
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">This country imports {_imp_dir} from US</div><div style="color:#60a5fa;font-size:22px;font-weight:700">{cp["imp"]:+.1f}%</div><div style="color:#475569;font-size:10px">their import vol change (GE model)</div></div>',
+            f'<div style="background:#0f172a;border-radius:8px;padding:10px"><div style="color:#64748b;font-size:10px">Jobs {_emp_dir} there</div><div style="color:{"#22d3a0" if cp["emp"]>0 else "#f87171"};font-size:22px;font-weight:700">{cp["emp"]:+.2f}%</div><div style="color:#475569;font-size:10px">employment change (GE model)</div></div>',
+        ]
+        st.markdown(
+            f'<div style="background:linear-gradient(135deg,#1a0d0d,#1a1d2e);border:2px solid #fb923c;border-radius:12px;padding:16px;margin-bottom:16px">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+            f'<div style="background:#fb923c;color:#0d0d0d;font-size:11px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:20px">MANUFACTURING FOCUS</div>'
+            f'<div style="color:#e2e8f0;font-size:20px;font-weight:700">{cp["country"]}</div>'
+            f'<div style="color:#64748b;font-size:13px;margin-left:auto">US factory import tariff: <span style="color:#f87171;font-weight:700">{_mfg_tariff:.0f}%</span></div>'
+            f'</div>'
+            f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">'
+            + "".join(_cells_t4) +
+            f'</div>'
+            f'<div style="margin-top:10px;color:#64748b;font-size:12px;line-height:1.5">'
+            f'US factories importing from {cp["country"]} now pay a {_mfg_tariff:.0f}% tariff on those inputs. '
+            f'At 32% average import penetration, this translates to an estimated {_cost_increase:.1f}pp cost uplift on factory inputs sourced from {cp["country"]}. '
+            f'The industrial tariff shock affects the entire supply chain through the IO multiplier ({mfg_stats.get("io_mult_mfg", 1.09):.2f}×).'
+            f'</div>'
+            f'</div>', unsafe_allow_html=True)
+
+    # ── How much did manufacturing imports fall? ───────────────────────────
+    st.markdown('<div class="section-header">How much did manufacturing imports fall?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The model predicts US manufacturing imports would drop by <b>80.8%</b> — the single largest sectoral trade shock. High import penetration (32%) means factories heavily depend on imported inputs.</div>', unsafe_allow_html=True)
+
+    c_imp1, c_imp2 = st.columns([1, 2])
+    with c_imp1:
+        import_changes_t4 = {"Manufacturing": mfg_stats["mfg_import_change"], "Pharma": -38.17}
+        fig_imp = go.Figure(go.Bar(
+            y=list(import_changes_t4.keys()), x=list(import_changes_t4.values()),
+            orientation="h", marker_color=["#f87171","#fb923c"],
+            text=[f"{v:+.1f}%" for v in import_changes_t4.values()], textposition="outside",
+        ))
+        fig_imp.update_layout(**PLOTLY_THEME, height=220,
+            title="Projected Import Drop by Sector",
+            xaxis_title="% Change")
+        fig_imp.update_xaxes(range=[-100, 10])
+        st.plotly_chart(fig_imp, use_container_width=True)
+    with c_imp2:
+        st.markdown('<div class="insight-box" style="margin-top:20px"><b>Manufacturing −80.8%</b>: The largest trade shock in the model. High import penetration (32%) combined with a 27% average tariff drives a near-collapse of import demand.<br><br><b>Pharma −38.2%</b>: Severe, but smaller because US domestic pharma partially substitutes for imports and prices are less elastic.</div>', unsafe_allow_html=True)
+
+    # ── Which industries face the biggest tariff shock? ────────────────────
+    st.markdown('<div class="section-header">Which industries face the biggest tariff shock?</div>', unsafe_allow_html=True)
+
+    SECTOR_NAMES_T4 = {
+        "steel_aluminum":      "Steel & Aluminum",
+        "pharma":              "Medicines (Pharma)",
+        "retail_consumer":     "Consumer Goods (Retail)",
+        "manufacturing_other": "Other Manufacturing",
+        "services_other":      "Services",
+        "energy_primary":      "Energy & Primary",
+    }
+    shock_scenario_t4 = st.selectbox(
+        "Scenario",
+        shocks["scenario"].unique().tolist(),
+        format_func=lambda s: {
+            "baseline_no_tariffs":      "No Tariffs (baseline)",
+            "liberation_day_schedule":  "Liberation Day Schedule",
+            "optimal_uniform_19":       "Optimal Uniform 19%",
+            "industry_focused":         "Industry-Focused",
+            "supply_chain_disruption":  "Supply Chain Disruption",
+        }.get(s, s),
+        key="mfg_shock_scenario_t4",
+    )
+    shock_plot = shocks[shocks["scenario"] == shock_scenario_t4].copy()
+    shock_plot["sector_label"] = shock_plot["model_sector"].map(SECTOR_NAMES_T4).fillna(shock_plot["model_sector"])
+    shock_plot["tariff_pct"]   = shock_plot["tariff_rate"] * 100
+
+    fig_shock = go.Figure(go.Bar(
+        x=shock_plot["tariff_pct"], y=shock_plot["sector_label"],
+        orientation="h",
+        marker_color=["#f87171" if v > 10 else "#fbbf24" if v > 3 else "#22d3a0" for v in shock_plot["tariff_pct"]],
+        text=[f"{v:.1f}%" for v in shock_plot["tariff_pct"]], textposition="outside",
+    ))
+    fig_shock.update_layout(**PLOTLY_THEME, height=320,
+        title="Effective Tariff Rate by Industry",
+        xaxis_title="Effective Tariff Rate %")
+    fig_shock.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig_shock, use_container_width=True)
+
+    # ── Why do tariffs raise prices more than expected? ────────────────────
+    st.markdown('<div class="section-header">Why do tariffs raise prices more than you\'d expect?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The supply chain multiplier (1.09×) captures how tariff costs on imported inputs ripple through manufacturing. A factory pays more for imported steel directly — but also pays more for components that use steel, compounding the total impact.</div>', unsafe_allow_html=True)
+
+    c_io1, c_io2 = st.columns([2, 1])
+    with c_io1:
+        io_stages = [
+            "Direct tariff rate\n(avg 27.0%)",
+            f"After supply chain effects\n(×{mfg_stats['io_mult_mfg']:.2f})",
+            f"Manufacturing share\nof total CPI ({mfg_stats['cpi_mfg_contribution']:.1f}pp of 7.1pp)",
+        ]
+        io_vals = [
+            mfg_stats["tau_mfg_avg"] * 100,
+            mfg_stats["tau_mfg_avg"] * 100 * mfg_stats["io_mult_mfg"],
+            mfg_stats["cpi_mfg_contribution"],
+        ]
+        fig_io = go.Figure(go.Bar(
+            x=io_stages, y=io_vals,
+            marker_color=["#2563eb","#fbbf24","#f87171"],
+            text=[f"{v:.1f}%" for v in io_vals], textposition="outside",
+        ))
+        fig_io.update_layout(**PLOTLY_THEME, height=300,
+            title="How Supply Chain Amplification Works",
+            yaxis_title="% Impact")
+        st.plotly_chart(fig_io, use_container_width=True)
+    with c_io2:
+        cpi_bd = pd.DataFrame({
+            "Sector": ["Manufacturing", "Retail", "Pharma", "Other"],
+            "CPI Contribution (pp)": [
+                round(mfg_stats["cpi_mfg_contribution"], 2),
+                0.30,
+                0.05,
+                round(7.09 - mfg_stats["cpi_mfg_contribution"] - 0.30 - 0.05, 2),
+            ],
+        })
+        st.markdown("<br><b>CPI breakdown by sector</b>", unsafe_allow_html=True)
+        st.dataframe(cpi_bd, use_container_width=True, hide_index=True)
+
+    # ── US Manufacturing Output by Industry ───────────────────────────────
+    st.markdown('<div class="section-header">US Manufacturing Output by Industry</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">96% of the total +7.1pp CPI impact comes from the manufacturing sector. Understanding which industries are largest helps assess where tariffs land hardest.</div>', unsafe_allow_html=True)
 
     year_sel = st.select_slider("Year", options=[2016,2017,2018,2019,2020,2021], value=2021)
-
     naics_plot = naics[["NAICS Code","Name", str(year_sel)]].copy()
     naics_plot.columns = ["naics","name","go_value"]
     naics_plot["go_value"] = pd.to_numeric(naics_plot["go_value"], errors="coerce")
@@ -738,19 +1466,17 @@ with tab4:
         fig_naics = go.Figure(go.Bar(
             x=top20["go_value"] / 1e6,
             y=top20["name"].str[:35],
-            orientation="h",
-            marker_color="#2563eb",
+            orientation="h", marker_color="#2563eb",
             text=[f"${v/1e6:.1f}T" for v in top20["go_value"]],
             textposition="outside",
         ))
         fig_naics.update_layout(**PLOTLY_THEME, height=500,
-            title=f"Top 20 NAICS Sectors by Gross Output ({year_sel})",
+            title=f"Top 20 Industries by Total Output ({year_sel})",
             xaxis_title="Gross Output ($T)")
         fig_naics.update_yaxes(autorange="reversed", tickfont=dict(size=10))
         st.plotly_chart(fig_naics, use_container_width=True)
 
     with c2:
-        # Gross output time series for top 8
         top8_names = naics_plot.nlargest(8, "go_value")["name"].tolist()
         years = [2016, 2017, 2018, 2019, 2020, 2021]
         fig_ts_n = go.Figure()
@@ -765,50 +1491,46 @@ with tab4:
                 mode="lines+markers",
             ))
         fig_ts_n.update_layout(**PLOTLY_THEME, height=500,
-            title="Gross Output Trend — Top 8 Sectors",
+            title="Output Trend — Top 8 Industries (2016–2021)",
             yaxis_title="Gross Output ($T)", xaxis_title="Year",
             legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
         st.plotly_chart(fig_ts_n, use_container_width=True)
 
-    # ── Sector tariff shocks ───────────────────────────────────────────────
-    st.markdown('<div class="section-header">Liberation Day Tariff Shocks by Sector</div>', unsafe_allow_html=True)
-    c3, c4 = st.columns(2)
+    # ── Which products have the highest tariffs? ───────────────────────────
+    st.markdown('<div class="section-header">Which products have the highest tariffs?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The HTS-8 schedule covers 13,100 product lines. Most face 0–25% MFN rates. Specific-rate tariffs (tobacco, sugar, dairy) are excluded as their rate equivalents are not meaningful percentages.</div>', unsafe_allow_html=True)
 
-    with c3:
-        shock_ld = shocks[shocks["scenario"] == "liberation_day_schedule"].copy()
-        shock_ld["tariff_pct"] = shock_ld["tariff_rate"] * 100
-        fig_shock = go.Figure(go.Bar(
-            x=shock_ld["tariff_pct"],
-            y=shock_ld["model_sector"].str.replace("_"," ").str.title(),
-            orientation="h",
-            marker_color=["#f87171" if v > 5 else "#fbbf24" if v > 2 else "#22d3a0"
-                         for v in shock_ld["tariff_pct"]],
-            text=[f"{v:.2f}%" for v in shock_ld["tariff_pct"]],
-            textposition="outside",
-        ))
-        fig_shock.update_layout(**PLOTLY_THEME, height=320,
-            title="Liberation Day Effective Tariff Rate by Sector",
-            xaxis_title="Effective Tariff Rate %")
-        fig_shock.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig_shock, use_container_width=True)
+    hts_search_t4 = st.text_input("Search product description", "", placeholder="e.g. steel, motor, apparel…")
+    hts_valid = hts[hts["mfn_rate"] < 2.0].copy()
+    hts_valid["mfn_pct"] = hts_valid["mfn_rate"] * 100
 
-    with c4:
-        # HTS8 tariff rate distribution (capped at 100%)
-        hts_plot = hts[hts["mfn_rate"] <= 1.0].copy()
-        hts_plot["mfn_pct"] = hts_plot["mfn_rate"] * 100
-        fig_hts = px.histogram(
-            hts_plot, x="mfn_pct", nbins=50,
+    desc_cols = [c for c in hts_valid.columns if any(kw in c.lower() for kw in ["description","product","brief"])]
+    if hts_search_t4 and desc_cols:
+        hts_filtered = hts_valid[hts_valid[desc_cols[0]].astype(str).str.contains(hts_search_t4, case=False, na=False)]
+    else:
+        hts_filtered = hts_valid
+
+    c_h1, c_h2 = st.columns([2, 1])
+    with c_h1:
+        fig_hts_hist = px.histogram(
+            hts_filtered, x="mfn_pct", nbins=50,
             color_discrete_sequence=["#2563eb"],
             labels={"mfn_pct": "MFN Tariff Rate (%)"},
         )
-        fig_hts.update_layout(**PLOTLY_THEME, height=320,
-            title="Distribution of HTS-8 MFN Tariff Rates (13,100 product lines)",
+        fig_hts_hist.update_layout(**PLOTLY_THEME, height=280,
+            title=f"Distribution of Tariff Rates ({len(hts_filtered):,} product lines)",
             xaxis_title="MFN Tariff Rate %", yaxis_title="# Product Lines")
-        st.plotly_chart(fig_hts, use_container_width=True)
+        st.plotly_chart(fig_hts_hist, use_container_width=True)
+    with c_h2:
+        if desc_cols:
+            hts_col = [c for c in hts_filtered.columns if "hts" in c.lower()]
+            top_hts = hts_filtered.nlargest(12, "mfn_pct")[[hts_col[0] if hts_col else hts_filtered.columns[0], desc_cols[0], "mfn_pct"]].copy()
+            top_hts.columns = ["HTS Code","Product","Rate %"]
+            top_hts["Rate %"] = top_hts["Rate %"].round(1)
+            st.dataframe(top_hts.reset_index(drop=True), use_container_width=True, hide_index=True)
 
-    # ── Price index trends ─────────────────────────────────────────────────
-    st.markdown('<div class="section-header">Producer Price Index by NAICS Subsector (BLS, 2012–2022)</div>', unsafe_allow_html=True)
-
+    # ── Producer Price Index ───────────────────────────────────────────────
+    st.markdown('<div class="section-header">How have factory prices changed over time?</div>', unsafe_allow_html=True)
     year_cols = [c for c in price_idx.columns if "Annual" in str(c)]
     fig_ppi = go.Figure()
     colors_ppi = ["#2563eb","#22d3a0","#fbbf24","#f87171","#a78bfa","#fb923c","#38bdf8","#4ade80","#f472b6","#a3e635"]
@@ -822,7 +1544,7 @@ with tab4:
             mode="lines+markers",
         ))
     fig_ppi.update_layout(**PLOTLY_THEME, height=360,
-        title="Producer Price Index Trends (2012=base)",
+        title="Producer Price Index by Industry, 2012–2022 (2012 = base)",
         yaxis_title="PPI Index", xaxis_title="Year",
         legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
     st.plotly_chart(fig_ppi, use_container_width=True)
@@ -1229,28 +1951,8 @@ with tab6:
         return text_response, charts
 
     def _run_mcp_sync(messages: list) -> tuple[str, list]:
-        """Bridge async MCP loop into Streamlit's synchronous context via a dedicated thread."""
-        import concurrent.futures
-
-        def _run():
-            loop = _asyncio.new_event_loop()
-            _asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(_run_mcp_agentic(messages))
-            finally:
-                loop.close()
-                _asyncio.set_event_loop(None)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(_run)
-            try:
-                return future.result()
-            except Exception as e:
-                def _unwrap(ex):
-                    if hasattr(ex, "exceptions") and ex.exceptions:
-                        return _unwrap(ex.exceptions[0])
-                    return ex
-                raise _unwrap(e) from None
+        """Bridge async MCP loop into Streamlit's synchronous context."""
+        return _asyncio.run(_run_mcp_agentic(messages))
 
     # ── Session state ─────────────────────────────────────────────────────
     if "mcp6_messages" not in st.session_state:
@@ -1290,17 +1992,7 @@ with tab6:
 
         with st.spinner("Spawning MCP subprocess and running list_tools()…"):
             try:
-                import concurrent.futures as _cf6
-                def _run_verify():
-                    loop = _asyncio.new_event_loop()
-                    _asyncio.set_event_loop(loop)
-                    try:
-                        return loop.run_until_complete(_verify_mcp())
-                    finally:
-                        loop.close()
-                        _asyncio.set_event_loop(None)
-                with _cf6.ThreadPoolExecutor(max_workers=1) as _pool6:
-                    init_result, tools_resp, elapsed = _pool6.submit(_run_verify).result()
+                init_result, tools_resp, elapsed = _asyncio.run(_verify_mcp())
                 st.success(f"Connected in {elapsed}s — server returned {len(tools_resp.tools)} tools")
                 st.markdown("**Raw `initialize()` response from server:**")
                 st.json(init_result.model_dump())
@@ -1354,8 +2046,7 @@ with tab6:
                 })
                 st.rerun()
             except Exception as e:
-                actual = e.exceptions[0] if hasattr(e, "exceptions") and e.exceptions else e
-                st.error(f"MCP error: {type(actual).__name__}: {actual}")
+                st.error(f"MCP error: {e}")
 
     # ── Chat input ────────────────────────────────────────────────────────
     st.markdown("---")
@@ -1363,3 +2054,5 @@ with tab6:
     if user_input6:
         st.session_state.mcp6_messages.append({"role": "user", "content": user_input6, "charts": []})
         st.rerun()
+
+
