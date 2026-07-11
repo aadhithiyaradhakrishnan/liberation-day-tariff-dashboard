@@ -1229,8 +1229,28 @@ with tab6:
         return text_response, charts
 
     def _run_mcp_sync(messages: list) -> tuple[str, list]:
-        """Bridge async MCP loop into Streamlit's synchronous context."""
-        return _asyncio.run(_run_mcp_agentic(messages))
+        """Bridge async MCP loop into Streamlit's synchronous context via a dedicated thread."""
+        import concurrent.futures
+
+        def _run():
+            loop = _asyncio.new_event_loop()
+            _asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(_run_mcp_agentic(messages))
+            finally:
+                loop.close()
+                _asyncio.set_event_loop(None)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_run)
+            try:
+                return future.result()
+            except Exception as e:
+                def _unwrap(ex):
+                    if hasattr(ex, "exceptions") and ex.exceptions:
+                        return _unwrap(ex.exceptions[0])
+                    return ex
+                raise _unwrap(e) from None
 
     # ── Session state ─────────────────────────────────────────────────────
     if "mcp6_messages" not in st.session_state:
@@ -1270,7 +1290,17 @@ with tab6:
 
         with st.spinner("Spawning MCP subprocess and running list_tools()…"):
             try:
-                init_result, tools_resp, elapsed = _asyncio.run(_verify_mcp())
+                import concurrent.futures as _cf6
+                def _run_verify():
+                    loop = _asyncio.new_event_loop()
+                    _asyncio.set_event_loop(loop)
+                    try:
+                        return loop.run_until_complete(_verify_mcp())
+                    finally:
+                        loop.close()
+                        _asyncio.set_event_loop(None)
+                with _cf6.ThreadPoolExecutor(max_workers=1) as _pool6:
+                    init_result, tools_resp, elapsed = _pool6.submit(_run_verify).result()
                 st.success(f"Connected in {elapsed}s — server returned {len(tools_resp.tools)} tools")
                 st.markdown("**Raw `initialize()` response from server:**")
                 st.json(init_result.model_dump())
@@ -1324,7 +1354,8 @@ with tab6:
                 })
                 st.rerun()
             except Exception as e:
-                st.error(f"MCP error: {e}")
+                actual = e.exceptions[0] if hasattr(e, "exceptions") and e.exceptions else e
+                st.error(f"MCP error: {type(actual).__name__}: {actual}")
 
     # ── Chat input ────────────────────────────────────────────────────────
     st.markdown("---")
