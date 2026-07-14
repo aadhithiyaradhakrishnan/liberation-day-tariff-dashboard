@@ -1373,6 +1373,72 @@ with tab4:
     with c_imp2:
         st.markdown('<div class="insight-box" style="margin-top:20px"><b>Manufacturing −80.8%</b>: The largest trade shock in the model. High import penetration (32%) combined with a 27% average tariff drives a near-collapse of import demand.<br><br><b>Pharma −38.2%</b>: Severe, but smaller because US domestic pharma partially substitutes for imports and prices are less elastic.</div>', unsafe_allow_html=True)
 
+    # ── What does US manufacturing actually make? ──────────────────────────
+    st.markdown('<div class="section-header">What does US manufacturing actually make?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">235 manufacturing industries (NAICS 31–33) rolled up into 21 subsectors. Transportation equipment, food processing and chemicals dominate — together over 40% of all US factory output.</div>', unsafe_allow_html=True)
+
+    _SUB3_NAMES = {
+        "336": "Cars, planes & transport equipment", "311": "Food processing",
+        "325": "Chemicals & pharma",                 "324": "Petroleum & coal products",
+        "333": "Industrial machinery",               "334": "Computers & electronics",
+        "332": "Fabricated metal products",          "331": "Primary metals (steel, aluminum)",
+        "326": "Plastics & rubber",                  "322": "Paper",
+        "312": "Beverages & tobacco",                "339": "Misc (medical devices, toys…)",
+        "321": "Wood products",                      "327": "Cement, glass & ceramics",
+        "335": "Electrical equipment",               "337": "Furniture",
+        "323": "Printing",                           "313": "Textile mills",
+        "314": "Textile products",                   "315": "Apparel",
+        "316": "Leather & footwear",
+    }
+    _naics_all = naics.copy()
+    _naics_all["NAICS Code"] = _naics_all["NAICS Code"].astype(str)
+    _mfg_rows = _naics_all[_naics_all["NAICS Code"].str.startswith(("31", "32", "33"))].copy()
+    _mfg_rows["go_2021"] = pd.to_numeric(_mfg_rows["2021"], errors="coerce")
+    _mfg_rows = _mfg_rows.dropna(subset=["go_2021"])
+    _mfg_rows["sub3"] = _mfg_rows["NAICS Code"].str[:3]
+
+    _mfg_total_2021 = _mfg_rows["go_2021"].sum()
+    _econ_total_2021 = pd.to_numeric(_naics_all["2021"], errors="coerce").sum()
+    _sub_totals = _mfg_rows.groupby("sub3")["go_2021"].sum().sort_values(ascending=False)
+    _largest_sub_code = _sub_totals.index[0]
+
+    c_sub_k1, c_sub_k2, c_sub_k3 = st.columns(3)
+    with c_sub_k1:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Total US manufacturing output (2021)</div>
+          <div class="kpi-value neutral" style="font-size:26px">${_mfg_total_2021/1e6:.2f}T</div>
+          <div class="kpi-sub">{len(_mfg_rows)} industries, NAICS 31–33</div>
+        </div>""", unsafe_allow_html=True)
+    with c_sub_k2:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Largest subsector</div>
+          <div class="kpi-value positive" style="font-size:22px">{_SUB3_NAMES.get(_largest_sub_code, _largest_sub_code)}</div>
+          <div class="kpi-sub">${_sub_totals.iloc[0]/1e6:.2f}T in 2021</div>
+        </div>""", unsafe_allow_html=True)
+    with c_sub_k3:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Manufacturing share of US economy</div>
+          <div class="kpi-value warning" style="font-size:26px">{_mfg_total_2021/_econ_total_2021*100:.1f}%</div>
+          <div class="kpi-sub">of total gross output, all industries</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("")
+    _sub_plot = _sub_totals.reset_index()
+    _sub_plot.columns = ["sub3", "go"]
+    _sub_plot["label"] = _sub_plot["sub3"].map(_SUB3_NAMES).fillna(_sub_plot["sub3"])
+    _sub_plot["go_bn"] = _sub_plot["go"] / 1e3
+    fig_sub = go.Figure(go.Bar(
+        x=_sub_plot["go_bn"], y=_sub_plot["label"],
+        orientation="h",
+        marker_color=["#2563eb" if i > 2 else "#22d3a0" for i in range(len(_sub_plot))],
+        text=[f"${v:,.0f}B" for v in _sub_plot["go_bn"]], textposition="outside",
+    ))
+    fig_sub.update_layout(**PLOTLY_THEME, height=560,
+        title="US Manufacturing Output by Subsector, 2021 (green = top 3)",
+        xaxis_title="Gross Output ($B)")
+    fig_sub.update_yaxes(autorange="reversed", tickfont=dict(size=11))
+    st.plotly_chart(fig_sub, use_container_width=True)
+
     # ── Which industries face the biggest tariff shock? ────────────────────
     st.markdown('<div class="section-header">Which industries face the biggest tariff shock?</div>', unsafe_allow_html=True)
 
@@ -1412,6 +1478,82 @@ with tab4:
     fig_shock.update_yaxes(autorange="reversed")
     st.plotly_chart(fig_shock, use_container_width=True)
 
+    # ── All scenarios at once: tariff heatmap ───────────────────────────────
+    st.markdown('<div class="section-header">Every scenario at a glance — which policy hits which sector?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Each cell is the effective tariff rate a sector faces under a policy scenario. The Optimal Uniform 19% scenario hits everything equally; the Liberation Day schedule concentrates on consumer goods.</div>', unsafe_allow_html=True)
+
+    _SCEN_NAMES_HM = {
+        "baseline_no_tariffs":     "No Tariffs (baseline)",
+        "liberation_day_schedule": "Liberation Day Schedule",
+        "optimal_uniform_19":      "Optimal Uniform 19%",
+        "industry_focused":        "Industry-Focused",
+        "supply_chain_disruption": "Supply Chain Disruption",
+    }
+    _hm = shocks.copy()
+    _hm["scen_label"] = _hm["scenario"].map(_SCEN_NAMES_HM).fillna(_hm["scenario"])
+    _hm["sect_label"] = _hm["model_sector"].map(SECTOR_NAMES_T4).fillna(_hm["model_sector"])
+    _hm["pct"] = _hm["tariff_rate"] * 100
+    _hm_pivot = _hm.pivot_table(index="scen_label", columns="sect_label", values="pct", aggfunc="first")
+    _scen_order = [v for v in _SCEN_NAMES_HM.values() if v in _hm_pivot.index]
+    _hm_pivot = _hm_pivot.reindex(_scen_order)
+
+    fig_hm = go.Figure(go.Heatmap(
+        z=_hm_pivot.values,
+        x=_hm_pivot.columns.tolist(),
+        y=_hm_pivot.index.tolist(),
+        colorscale=[[0, "#1a1d2e"], [0.3, "#7c2d12"], [1, "#f87171"]],
+        text=[[f"{v:.1f}%" for v in row] for row in _hm_pivot.values],
+        texttemplate="%{text}",
+        textfont=dict(size=12, color="#e2e8f0"),
+        colorbar=dict(title="Tariff %", tickfont=dict(color="#94a3b8"), bgcolor="#1a1d2e"),
+        hovertemplate="<b>%{y}</b><br>%{x}: %{z:.1f}%<extra></extra>",
+    ))
+    fig_hm.update_layout(**PLOTLY_THEME, height=340,
+        title="Effective Tariff Rate: 5 Scenarios × 6 Sectors")
+    st.plotly_chart(fig_hm, use_container_width=True)
+
+    # ── Before vs after: the tariff jump ────────────────────────────────────
+    st.markdown('<div class="section-header">Before vs after: how big was the tariff jump?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Factory import costs jumped roughly <b>7×</b> overnight. Before Liberation Day, US manufacturers paid ~3.6% on imported inputs; the effective rate is now ~27%. Pharma jumped 8× — from 2.4% to 19.9%.</div>', unsafe_allow_html=True)
+
+    _risk_pj, _tsup_pj, _htsx_pj, _ph_stats_pj = load_pharma_risk()
+    _jump_sectors = ["Manufacturing", "Pharma"]
+    _jump_pre  = [mfg_stats["hts8_mfg_rate"] * 100,  _ph_stats_pj["hts8_pharma_rate"] * 100]
+    _jump_post = [mfg_stats["tau_mfg_avg"] * 100,    _ph_stats_pj["tau_pharma_eff"] * 100]
+
+    c_pj1, c_pj2 = st.columns([3, 2])
+    with c_pj1:
+        fig_jump = go.Figure()
+        fig_jump.add_trace(go.Bar(
+            name="Before Liberation Day", x=_jump_sectors, y=_jump_pre,
+            marker_color="#2563eb",
+            text=[f"{v:.1f}%" for v in _jump_pre], textposition="outside",
+        ))
+        fig_jump.add_trace(go.Bar(
+            name="After Liberation Day", x=_jump_sectors, y=_jump_post,
+            marker_color="#f87171",
+            text=[f"{v:.1f}%" for v in _jump_post], textposition="outside",
+        ))
+        fig_jump.update_layout(**PLOTLY_THEME, height=320,
+            title="Effective Import Tariff Rate: Pre vs Post Liberation Day",
+            barmode="group", yaxis_title="Tariff Rate (%)",
+            legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
+        st.plotly_chart(fig_jump, use_container_width=True)
+    with c_pj2:
+        _mfg_mult = _jump_post[0] / max(_jump_pre[0], 0.01)
+        _ph_mult  = _jump_post[1] / max(_jump_pre[1], 0.01)
+        st.markdown(f"""
+        <div class="kpi-card" style="margin-top:24px">
+          <div class="kpi-label">Manufacturing tariff multiplied by</div>
+          <div class="kpi-value negative" style="font-size:30px">{_mfg_mult:.1f}×</div>
+          <div class="kpi-sub">{_jump_pre[0]:.1f}% → {_jump_post[0]:.1f}%</div>
+        </div>
+        <div class="kpi-card" style="margin-top:12px">
+          <div class="kpi-label">Pharma tariff multiplied by</div>
+          <div class="kpi-value negative" style="font-size:30px">{_ph_mult:.1f}×</div>
+          <div class="kpi-sub">{_jump_pre[1]:.1f}% → {_jump_post[1]:.1f}%</div>
+        </div>""", unsafe_allow_html=True)
+
     # ── Why do tariffs raise prices more than expected? ────────────────────
     st.markdown('<div class="section-header">Why do tariffs raise prices more than you\'d expect?</div>', unsafe_allow_html=True)
     st.markdown('<div class="insight-box">The supply chain multiplier (1.09×) captures how tariff costs on imported inputs ripple through manufacturing. A factory pays more for imported steel directly — but also pays more for components that use steel, compounding the total impact.</div>', unsafe_allow_html=True)
@@ -1450,12 +1592,15 @@ with tab4:
         st.markdown("<br><b>CPI breakdown by sector</b>", unsafe_allow_html=True)
         st.dataframe(cpi_bd, use_container_width=True, hide_index=True)
 
-    # ── US Manufacturing Output by Industry ───────────────────────────────
-    st.markdown('<div class="section-header">US Manufacturing Output by Industry</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">96% of the total +7.1pp CPI impact comes from the manufacturing sector. Understanding which industries are largest helps assess where tariffs land hardest.</div>', unsafe_allow_html=True)
+    # ── US Manufacturing Output by Industry (NAICS 31–33 only) ─────────────
+    st.markdown('<div class="section-header">Top manufacturing industries by output</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Only true manufacturing industries (NAICS 31–33) are shown — 235 industries totalling $6.3T. Petroleum refineries, light trucks and pharmaceutical preparations lead the pack.</div>', unsafe_allow_html=True)
 
     year_sel = st.select_slider("Year", options=[2016,2017,2018,2019,2020,2021], value=2021)
-    naics_plot = naics[["NAICS Code","Name", str(year_sel)]].copy()
+    naics_mfg_only = naics.copy()
+    naics_mfg_only["NAICS Code"] = naics_mfg_only["NAICS Code"].astype(str)
+    naics_mfg_only = naics_mfg_only[naics_mfg_only["NAICS Code"].str.startswith(("31","32","33"))]
+    naics_plot = naics_mfg_only[["NAICS Code","Name", str(year_sel)]].copy()
     naics_plot.columns = ["naics","name","go_value"]
     naics_plot["go_value"] = pd.to_numeric(naics_plot["go_value"], errors="coerce")
     naics_plot = naics_plot.dropna(subset=["go_value"])
@@ -1464,15 +1609,15 @@ with tab4:
     with c1:
         top20 = naics_plot.nlargest(20, "go_value")
         fig_naics = go.Figure(go.Bar(
-            x=top20["go_value"] / 1e6,
-            y=top20["name"].str[:35],
+            x=top20["go_value"] / 1e3,
+            y=top20["name"].str[:40],
             orientation="h", marker_color="#2563eb",
-            text=[f"${v/1e6:.1f}T" for v in top20["go_value"]],
+            text=[f"${v/1e3:,.0f}B" for v in top20["go_value"]],
             textposition="outside",
         ))
         fig_naics.update_layout(**PLOTLY_THEME, height=500,
-            title=f"Top 20 Industries by Total Output ({year_sel})",
-            xaxis_title="Gross Output ($T)")
+            title=f"Top 20 Manufacturing Industries ({year_sel}, NAICS 31–33)",
+            xaxis_title="Gross Output ($B)")
         fig_naics.update_yaxes(autorange="reversed", tickfont=dict(size=10))
         st.plotly_chart(fig_naics, use_container_width=True)
 
@@ -1482,19 +1627,47 @@ with tab4:
         fig_ts_n = go.Figure()
         colors_n = ["#2563eb","#22d3a0","#fbbf24","#f87171","#a78bfa","#fb923c","#38bdf8","#4ade80"]
         for i, name in enumerate(top8_names):
-            row = naics[naics["Name"] == name]
+            row = naics_mfg_only[naics_mfg_only["Name"] == name]
             if row.empty: continue
-            vals = [pd.to_numeric(row[str(y)].iloc[0], errors="coerce") / 1e6 for y in years]
+            vals = [pd.to_numeric(row[str(y)].iloc[0], errors="coerce") / 1e3 for y in years]
             fig_ts_n.add_trace(go.Scatter(
                 x=years, y=vals, name=name[:25],
                 line=dict(color=colors_n[i % len(colors_n)], width=2),
                 mode="lines+markers",
             ))
         fig_ts_n.update_layout(**PLOTLY_THEME, height=500,
-            title="Output Trend — Top 8 Industries (2016–2021)",
-            yaxis_title="Gross Output ($T)", xaxis_title="Year",
+            title="Output Trend — Top 8 Manufacturing Industries (2016–2021)",
+            yaxis_title="Gross Output ($B)", xaxis_title="Year",
             legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
         st.plotly_chart(fig_ts_n, use_container_width=True)
+
+    # ── Which manufacturing industries are growing or shrinking? ────────────
+    st.markdown('<div class="section-header">Which manufacturing industries are growing — and which are dying?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Output growth 2016 → 2021, for industries with at least $10B output in 2021. Tariffs land very differently on a booming industry than on one already in decline.</div>', unsafe_allow_html=True)
+
+    _gr = naics_mfg_only[["NAICS Code","Name","2016","2021"]].copy()
+    _gr["go16"] = pd.to_numeric(_gr["2016"], errors="coerce")
+    _gr["go21"] = pd.to_numeric(_gr["2021"], errors="coerce")
+    _gr = _gr.dropna(subset=["go16","go21"])
+    _gr = _gr[(_gr["go21"] >= 10000) & (_gr["go16"] > 0)]
+    _gr["growth_pct"] = (_gr["go21"] / _gr["go16"] - 1) * 100
+
+    _gr_top = _gr.nlargest(10, "growth_pct")
+    _gr_bot = _gr.nsmallest(10, "growth_pct").sort_values("growth_pct", ascending=False)
+    _gr_plot = pd.concat([_gr_top, _gr_bot])
+
+    fig_gr = go.Figure(go.Bar(
+        x=_gr_plot["growth_pct"], y=_gr_plot["Name"].str[:40],
+        orientation="h",
+        marker_color=["#22d3a0" if v >= 0 else "#f87171" for v in _gr_plot["growth_pct"]],
+        text=[f"{v:+.0f}%" for v in _gr_plot["growth_pct"]], textposition="outside",
+    ))
+    fig_gr.add_vline(x=0, line_color="#4b5563", line_width=1)
+    fig_gr.update_layout(**PLOTLY_THEME, height=560,
+        title="Fastest-Growing vs Fastest-Shrinking Manufacturing Industries (2016–2021, min $10B)",
+        xaxis_title="Output Growth %")
+    fig_gr.update_yaxes(autorange="reversed", tickfont=dict(size=10))
+    st.plotly_chart(fig_gr, use_container_width=True)
 
     # ── Which products have the highest tariffs? ───────────────────────────
     st.markdown('<div class="section-header">Which products have the highest tariffs?</div>', unsafe_allow_html=True)
@@ -1529,25 +1702,141 @@ with tab4:
             top_hts["Rate %"] = top_hts["Rate %"].round(1)
             st.dataframe(top_hts.reset_index(drop=True), use_container_width=True, hide_index=True)
 
+    # ── Which products were protected BEFORE Liberation Day? ────────────────
+    st.markdown('<div class="section-header">Which products were already protected BEFORE Liberation Day?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Pre-existing US tariffs (MFN rates) were concentrated in labor-intensive goods: footwear ~15%, apparel ~11%, textiles ~10%. Machinery, electronics and pharma were nearly duty-free — exactly the categories Liberation Day hit hardest.</div>', unsafe_allow_html=True)
+
+    _CH_NAMES = {
+        "64": "Footwear", "61": "Knitted apparel", "62": "Woven apparel",
+        "55": "Man-made staple fibres", "54": "Man-made filaments", "60": "Knitted fabrics",
+        "19": "Cereal & bakery products", "42": "Leather goods & bags", "52": "Cotton",
+        "12": "Oilseeds", "58": "Special woven fabrics", "69": "Ceramics",
+        "63": "Made-up textiles", "21": "Misc edible preparations", "04": "Dairy, eggs & honey",
+        "17": "Sugars", "20": "Fruit & vegetable preparations", "16": "Meat & fish preparations",
+        "96": "Misc manufactured articles", "91": "Clocks & watches", "24": "Tobacco",
+        "87": "Vehicles", "84": "Machinery", "85": "Electronics", "30": "Pharmaceuticals",
+        "72": "Iron & steel", "73": "Steel articles", "39": "Plastics", "29": "Organic chemicals",
+    }
+    _hts_ch = hts_valid.copy()
+    _hts_ch["chapter"] = _hts_ch["hts8"].astype(str).str.zfill(8).str[:2]
+    _ch_agg = _hts_ch.groupby("chapter").agg(
+        n_lines=("mfn_pct", "size"), avg_rate=("mfn_pct", "mean")).reset_index()
+    _ch_agg = _ch_agg[_ch_agg["n_lines"] >= 30]
+    _ch_top = _ch_agg.nlargest(15, "avg_rate").copy()
+    _ch_top["label"] = _ch_top["chapter"].map(_CH_NAMES).fillna("Chapter " + _ch_top["chapter"])
+
+    fig_ch = go.Figure(go.Bar(
+        x=_ch_top["avg_rate"], y=_ch_top["label"],
+        orientation="h",
+        marker_color=["#f87171" if v > 10 else "#fb923c" if v > 7 else "#fbbf24" for v in _ch_top["avg_rate"]],
+        text=[f"{v:.1f}%  ({n:,} products)" for v, n in zip(_ch_top["avg_rate"], _ch_top["n_lines"])],
+        textposition="outside",
+    ))
+    fig_ch.update_layout(**PLOTLY_THEME, height=460,
+        title="Top 15 Product Categories by Pre-Liberation Day Tariff Rate (avg MFN)",
+        xaxis_title="Average MFN Tariff Rate (%)")
+    fig_ch.update_xaxes(range=[0, 20])
+    fig_ch.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig_ch, use_container_width=True)
+
+    # ── Who gets duty-free access? (FTA analysis) ───────────────────────────
+    st.markdown('<div class="section-header">Who gets duty-free access to the US market?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Share of all 13,100 product lines that enter the US at a 0% rate under each trade regime. Free-trade agreement partners like Mexico, Canada (USMCA), Korea and Australia negotiated near-universal duty-free access — <b>Liberation Day tariffs stack on top of these rates, effectively nullifying decades of trade agreements</b>.</div>', unsafe_allow_html=True)
+
+    _fta_regimes = [
+        ("MFN (everyone)",        "mfn_ad_val_rate"),
+        ("USMCA (Mexico/Canada)", "usmca_ad_val_rate"),
+        ("Korea FTA",             "korea_ad_val_rate"),
+        ("Australia FTA",         "australia_ad_val_rate"),
+        ("Chile FTA",             "chile_ad_val_rate"),
+        ("Singapore FTA",         "singapore_ad_val_rate"),
+        ("Japan Agreement",       "japan_ad_val_rate"),
+    ]
+    _fta_rows = []
+    _n_total_hts = len(hts)
+    _mfn_free_mask = pd.to_numeric(hts["mfn_ad_val_rate"], errors="coerce").fillna(1) == 0
+    for _label, _col in _fta_regimes:
+        if _col not in hts.columns:
+            continue
+        if _label.startswith("MFN"):
+            _free = int(_mfn_free_mask.sum())
+        else:
+            # Duty-free for an FTA partner = already MFN-free OR explicit 0% preference
+            _fta_zero = pd.to_numeric(hts[_col], errors="coerce") == 0
+            _free = int((_mfn_free_mask | _fta_zero).sum())
+        _fta_rows.append({"regime": _label, "free_pct": _free / _n_total_hts * 100, "n_free": _free})
+    _fta_df = pd.DataFrame(_fta_rows).sort_values("free_pct", ascending=False)
+
+    fig_fta = go.Figure(go.Bar(
+        x=_fta_df["free_pct"], y=_fta_df["regime"],
+        orientation="h",
+        marker_color=["#2563eb" if r.startswith("MFN") else "#22d3a0" for r in _fta_df["regime"]],
+        text=[f"{v:.0f}%  ({n:,} lines)" for v, n in zip(_fta_df["free_pct"], _fta_df["n_free"])],
+        textposition="outside",
+    ))
+    fig_fta.update_layout(**PLOTLY_THEME, height=340,
+        title="Share of Product Lines Entering Duty-Free, by Trade Regime (pre-Liberation Day)",
+        xaxis_title="% of 13,100 HTS Lines at 0% Tariff")
+    fig_fta.update_xaxes(range=[0, 100])
+    fig_fta.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig_fta, use_container_width=True)
+
     # ── Producer Price Index ───────────────────────────────────────────────
-    st.markdown('<div class="section-header">How have factory prices changed over time?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">How have factory prices changed over the last decade?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Tech goods got dramatically <b>cheaper</b> for a decade — computer producer prices fell 22% and semiconductors fell 8% between 2012 and 2021, while furniture, machinery and plastics rose ~22%. Tariffs reverse the cheap-tech trend: import taxes now push electronics prices up instead.</div>', unsafe_allow_html=True)
+
+    _PPI_NAMES = {
+        3152: "Apparel",            3344: "Semiconductors",
+        3341: "Computers",          3371: "Furniture",
+        3363: "Motor vehicle parts",3359: "Electrical equipment",
+        3399: "Misc manufacturing", 3343: "Audio & video equipment",
+        3339: "Industrial machinery",3261: "Plastics products",
+    }
     year_cols = [c for c in price_idx.columns if "Annual" in str(c)]
-    fig_ppi = go.Figure()
     colors_ppi = ["#2563eb","#22d3a0","#fbbf24","#f87171","#a78bfa","#fb923c","#38bdf8","#4ade80","#f472b6","#a3e635"]
-    for i, (_, row) in enumerate(price_idx.iterrows()):
-        vals = pd.to_numeric(row[year_cols], errors="coerce")
-        yr_labels = [str(y).replace("Annual ","") for y in year_cols]
-        fig_ppi.add_trace(go.Scatter(
-            x=yr_labels, y=vals.values,
-            name=f"NAICS {int(row['NAICS4'])}",
-            line=dict(color=colors_ppi[i % len(colors_ppi)], width=1.8),
-            mode="lines+markers",
+
+    c_ppi1, c_ppi2 = st.columns([3, 2])
+    with c_ppi1:
+        fig_ppi = go.Figure()
+        for i, (_, row) in enumerate(price_idx.iterrows()):
+            vals = pd.to_numeric(row[year_cols], errors="coerce")
+            yr_labels = [str(y).replace("Annual ","") for y in year_cols]
+            _ppi_name = _PPI_NAMES.get(int(row["NAICS4"]), f"NAICS {int(row['NAICS4'])}")
+            fig_ppi.add_trace(go.Scatter(
+                x=yr_labels, y=vals.values,
+                name=_ppi_name,
+                line=dict(color=colors_ppi[i % len(colors_ppi)], width=1.8),
+                mode="lines+markers",
+            ))
+        fig_ppi.update_layout(**PLOTLY_THEME, height=420,
+            title="Producer Price Index by Industry, 2012–2022",
+            yaxis_title="PPI Index", xaxis_title="Year",
+            legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
+        st.plotly_chart(fig_ppi, use_container_width=True)
+
+    with c_ppi2:
+        _dec_rows = []
+        for _, row in price_idx.iterrows():
+            _v12 = pd.to_numeric(row["Annual 2012"], errors="coerce")
+            _v21 = pd.to_numeric(row["Annual 2021"], errors="coerce")
+            if pd.notna(_v12) and pd.notna(_v21) and _v12 > 0:
+                _dec_rows.append({
+                    "name": _PPI_NAMES.get(int(row["NAICS4"]), f"NAICS {int(row['NAICS4'])}"),
+                    "chg": (_v21 / _v12 - 1) * 100,
+                })
+        _dec_df = pd.DataFrame(_dec_rows).sort_values("chg")
+        fig_dec = go.Figure(go.Bar(
+            x=_dec_df["chg"], y=_dec_df["name"],
+            orientation="h",
+            marker_color=["#22d3a0" if v < 0 else "#f87171" for v in _dec_df["chg"]],
+            text=[f"{v:+.0f}%" for v in _dec_df["chg"]], textposition="outside",
         ))
-    fig_ppi.update_layout(**PLOTLY_THEME, height=360,
-        title="Producer Price Index by Industry, 2012–2022 (2012 = base)",
-        yaxis_title="PPI Index", xaxis_title="Year",
-        legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
-    st.plotly_chart(fig_ppi, use_container_width=True)
+        fig_dec.add_vline(x=0, line_color="#4b5563", line_width=1)
+        fig_dec.update_layout(**PLOTLY_THEME, height=420,
+            title="Total Price Change 2012 → 2021 (green = got cheaper)",
+            xaxis_title="% Change")
+        fig_dec.update_xaxes(range=[-35, 35])
+        st.plotly_chart(fig_dec, use_container_width=True)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
