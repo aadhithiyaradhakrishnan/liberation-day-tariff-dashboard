@@ -1774,7 +1774,9 @@ with tab4:
                 line=dict(color=_colors_bea_rl[_i_rl % len(_colors_bea_rl)],
                           width=3 if _k_rl == "Manufacturing" else 1.6),
             ))
-        fig_bea_rl.add_vline(x="2025Q2", line_dash="dash", line_color="#f87171",
+        # Categorical x-axis: quarters map to positions 0..8; Liberation Day (Apr 2, 2025)
+        # falls at the start of 2025Q2 (index 5), so draw the line at 4.5
+        fig_bea_rl.add_vline(x=4.5, line_dash="dash", line_color="#f87171",
             annotation_text="Liberation Day", annotation_position="top left",
             annotation_font_color="#f87171")
         fig_bea_rl.update_layout(**PLOTLY_THEME, height=360,
