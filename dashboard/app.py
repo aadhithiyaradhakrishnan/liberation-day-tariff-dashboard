@@ -1563,12 +1563,20 @@ with tab3:
 with tab4:
     naics, price_idx, shocks, hts, mfg_stats = load_manufacturing()
 
+    # Measured post-Liberation Day data (USITC customs + BEA quarterly output)
+    _imp_rl, _dut_rl, _bea_rl = load_mfg_reality()
+    _mv_rl = _imp_rl.groupby("date")["value"].sum().rename("value").to_frame()
+    _mv_rl["duty"] = _dut_rl.groupby("date")["value"].sum()
+    _mv_rl["rate"] = _mv_rl["duty"] / _mv_rl["value"] * 100
+    _rate_2024_rl = float(_mv_rl.loc[(_mv_rl.index >= "2024-01-01") & (_mv_rl.index <= "2024-12-01"), "rate"].mean())
+    _rate_peak_rl = float(_mv_rl.loc[_mv_rl.index >= "2025-04-01", "rate"].max())
+
     kpi4 = [
         ("Average tariff on factory imports",     f"{mfg_stats['tau_mfg_avg']*100:.1f}%",          "negative", "Trade-weighted avg"),
         ("Imports as % of factory output",        f"{mfg_stats['import_penetration_mfg']*100:.1f}%","warning",  "Import penetration"),
         ("Factory tariffs' share of price rises", f"+{mfg_stats['cpi_mfg_contribution']:.1f}pp",   "negative", "Of +7.1pp total CPI"),
         ("Supply chain multiplier",               f"{mfg_stats['io_mult_mfg']:.2f}×",              "warning",  "IO amplification"),
-        ("Drop in manufacturing imports",         f"{mfg_stats['mfg_import_change']:+.1f}%",        "negative", "GE model estimate"),
+        ("Effective tariff actually paid",        f"{_rate_2024_rl:.1f}% → {_rate_peak_rl:.0f}%",  "negative", "US customs collections, 2024 → 2025 peak"),
         ("Pre-tariff HTS8 avg rate",              f"{mfg_stats['hts8_mfg_rate']*100:.1f}%",        "neutral",  "Before Liberation Day"),
     ]
     cols4 = st.columns(6)
@@ -1620,31 +1628,10 @@ with tab4:
             f'</div>'
             f'</div>', unsafe_allow_html=True)
 
-    # ── How much did manufacturing imports fall? ───────────────────────────
-    st.markdown('<div class="section-header">How much did manufacturing imports fall?</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">The model predicts US manufacturing imports would drop by <b>80.8%</b> — the single largest sectoral trade shock. High import penetration (32%) means factories heavily depend on imported inputs.</div>', unsafe_allow_html=True)
+    # ── Measured impact after Liberation Day ─────────────────────────────────
+    st.markdown('<div class="section-header">⚡ What happened after Liberation Day — measured impact</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Official measured data — USITC customs records (monthly imports & duties collected, through Dec 2025) and BEA quarterly output (through Q1 2026). The tariffs hit hard where they were aimed: steel, vehicles and consumer goods imports fell sharply, duty collections roughly quintupled, and US factory output kept growing.</div>', unsafe_allow_html=True)
 
-    c_imp1, c_imp2 = st.columns([1, 2])
-    with c_imp1:
-        import_changes_t4 = {"Manufacturing": mfg_stats["mfg_import_change"], "Pharma": -38.17}
-        fig_imp = go.Figure(go.Bar(
-            y=list(import_changes_t4.keys()), x=list(import_changes_t4.values()),
-            orientation="h", marker_color=["#f87171","#fb923c"],
-            text=[f"{v:+.1f}%" for v in import_changes_t4.values()], textposition="outside",
-        ))
-        fig_imp.update_layout(**PLOTLY_THEME, height=220,
-            title="Projected Import Drop by Sector",
-            xaxis_title="% Change")
-        fig_imp.update_xaxes(range=[-100, 10])
-        st.plotly_chart(fig_imp, use_container_width=True)
-    with c_imp2:
-        st.markdown('<div class="insight-box" style="margin-top:20px"><b>Manufacturing −80.8%</b>: The largest trade shock in the model. High import penetration (32%) combined with a 27% average tariff drives a near-collapse of import demand.<br><br><b>Pharma −38.2%</b>: Severe, but smaller because US domestic pharma partially substitutes for imports and prices are less elastic.</div>', unsafe_allow_html=True)
-
-    # ── REALITY CHECK: what actually happened after Liberation Day ──────────
-    st.markdown('<div class="section-header">⚡ Reality check: what ACTUALLY happened after Liberation Day</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">The section above is a <b>model prediction</b>. This section is <b>measured reality</b> — official USITC customs data (monthly imports & duties collected, through Dec 2025) and BEA quarterly output (through Q1 2026). The model predicted an 80.8% import collapse; actual manufacturing imports were roughly <b>flat</b>. The tariffs were real — duty collections quintupled — but trade proved far more resilient than the linearised model assumed.</div>', unsafe_allow_html=True)
-
-    _imp_rl, _dut_rl, _bea_rl = load_mfg_reality()
     _CH_NAMES_RL = {39: "Plastics", 72: "Iron & Steel", 73: "Steel Articles",
                     84: "Machinery", 85: "Electronics", 87: "Vehicles",
                     94: "Furniture", 95: "Toys & Sports"}
@@ -1654,12 +1641,10 @@ with tab4:
     _post_rl = _imp_rl[(_imp_rl["date"] >= "2025-04-01") & (_imp_rl["date"] <= "2025-12-01")]
     _tot_chg_rl = (_post_rl["value"].sum() / _pre_rl["value"].sum() - 1) * 100
 
-    # Effective tariff rate per month
-    _mv_rl = _imp_rl.groupby("date")["value"].sum().rename("value").to_frame()
-    _mv_rl["duty"] = _dut_rl.groupby("date")["value"].sum()
-    _mv_rl["rate"] = _mv_rl["duty"] / _mv_rl["value"] * 100
-    _rate_2024_rl = float(_mv_rl.loc[(_mv_rl.index >= "2024-01-01") & (_mv_rl.index <= "2024-12-01"), "rate"].mean())
-    _rate_peak_rl = float(_mv_rl.loc[_mv_rl.index >= "2025-04-01", "rate"].max())
+    # Duties collected: Apr-Dec 2025 vs same months 2024
+    _dpre_rl  = _dut_rl[(_dut_rl["date"] >= "2024-04-01") & (_dut_rl["date"] <= "2024-12-01")]["value"].sum()
+    _dpost_rl = _dut_rl[(_dut_rl["date"] >= "2025-04-01") & (_dut_rl["date"] <= "2025-12-01")]["value"].sum()
+    _duty_mult_rl = _dpost_rl / max(_dpre_rl, 1)
 
     # BEA manufacturing output growth 2025Q1 -> 2026Q1
     _bea_mfg_rl = _bea_rl[_bea_rl["industry"] == "Manufacturing"]
@@ -1668,14 +1653,14 @@ with tab4:
     _rc1, _rc2, _rc3, _rc4 = st.columns(4)
     with _rc1:
         st.markdown(f"""<div class="kpi-card">
-          <div class="kpi-label">Model predicted imports</div>
-          <div class="kpi-value negative" style="font-size:26px">−80.8%</div>
-          <div class="kpi-sub">GE model estimate</div>
+          <div class="kpi-label">Duties collected since tariffs</div>
+          <div class="kpi-value negative" style="font-size:26px">{_duty_mult_rl:.1f}×</div>
+          <div class="kpi-sub">${_dpost_rl/1e9:,.0f}B collected Apr–Dec 2025 vs ${_dpre_rl/1e9:,.0f}B in 2024</div>
         </div>""", unsafe_allow_html=True)
     with _rc2:
         _tc_cls = "positive" if _tot_chg_rl > 0 else "negative"
-        st.markdown(f"""<div class="kpi-card" style="border:1px solid #22d3a0">
-          <div class="kpi-label">Actual imports (Apr–Dec 2025 vs 2024)</div>
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Total mfg imports (Apr–Dec 2025 vs 2024)</div>
           <div class="kpi-value {_tc_cls}" style="font-size:26px">{_tot_chg_rl:+.1f}%</div>
           <div class="kpi-sub">USITC customs data, 8 mfg chapters</div>
         </div>""", unsafe_allow_html=True)
@@ -1785,7 +1770,7 @@ with tab4:
         fig_bea_rl.update_yaxes(title_text="Index (2025Q1 = 100)")
         st.plotly_chart(fig_bea_rl, use_container_width=True)
 
-    st.markdown('<div class="insight-box"><b>Why was the model so wrong on imports?</b> Three reasons: (1) the −80.8% is a <i>linearised</i> elasticity estimate that breaks down for large tariff shocks; (2) exemptions and USMCA carve-outs meant the effective rate peaked near 13%, not the 27% headline; (3) demand surged in exactly the categories America can\'t substitute — machinery imports <b>rose 26%</b> (data-center and AI capex boom) even as tariffed steel (−24%), vehicles (−18%) and toys (−21%) fell sharply. The tariffs were real — monthly duty collections roughly <b>5×</b> — but aggregate trade rerouted rather than collapsed. Note: BEA output is nominal, so part of the output "growth" is tariff-driven price increases.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box"><b>What the data shows:</b> the tariffs bit hardest exactly where they were aimed — steel imports fell <b>24%</b>, vehicles <b>18%</b>, toys <b>21%</b> and furniture <b>12%</b>, while duty collections roughly <b>quintupled</b>. Total imports held up only because machinery purchases <b>rose 26%</b> on the data-center and AI capex boom — equipment America cannot yet source domestically. Exemptions and USMCA carve-outs kept the average effective rate near 13% rather than the 27% headline. Note: BEA output is nominal, so part of the output growth reflects tariff-driven price increases.</div>', unsafe_allow_html=True)
 
     # ── Which industries face the biggest tariff shock? ────────────────────
     st.markdown('<div class="section-header">Which industries face the biggest tariff shock?</div>', unsafe_allow_html=True)
