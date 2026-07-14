@@ -604,7 +604,8 @@ with tab1:
 
     # ── Who depends most on the US market? ───────────────────────────────────
     st.markdown('<div class="section-header">Who depends most on the US market — and what happened to them?</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">Each bar is a country\'s exports to the US as a share of its own GDP — how much of its economy rides on American demand. Bar color shows what the tariffs did to it (red = economy shrank). <b>Dependence predicts damage</b>: Vietnam sends 25% of its GDP to the US and lost 11%; Guyana sends 18% and lost 18.5%.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">2023 merchandise exports to the United States as a share of exporter GDP (CEPII calibration); welfare change under <b>USTR tariffs + No Retaliation</b>, verified against the replication\'s output_map.csv. <b>Dependence predicts damage</b>: Vietnam sends 25% of its GDP to the US and lost 11%; Guyana sends 18% and lost 18.5%.<br><br>'
+        '<b>Bar colors:</b> <span style="color:#22d3a0">■ green = welfare gain</span> · <span style="color:#fbbf24">■ yellow = loss under 1%</span> · <span style="color:#fb923c">■ orange = loss 1–5%</span> · <span style="color:#f87171">■ red = loss over 5%</span> · <span style="color:#ffffff">■ white = your selected country</span></div>', unsafe_allow_html=True)
 
     _dep_df = cl.copy()
     _dep_df["dep_pct"] = np.where(Y_i > 0, _us_imports_vec / Y_i * 100, 0)
@@ -630,7 +631,7 @@ with tab1:
         textposition="outside",
     ))
     fig_dep_us.update_layout(**PLOTLY_THEME, height=520,
-        title="Exports to US as % of Own GDP — colored by welfare outcome (red = worst hit)")
+        title="2023 Exports to US as % of Own GDP — welfare under USTR + No Retaliation")
     fig_dep_us.update_xaxes(title_text="Exports to US / GDP (%)", range=[0, _dep_top["dep_pct"].max() * 1.45])
     fig_dep_us.update_yaxes(autorange="reversed")
     st.plotly_chart(fig_dep_us, use_container_width=True)
@@ -858,7 +859,7 @@ with tab1:
     st.plotly_chart(fig_maj, use_container_width=True)
 
     # ── The global scoreboard ────────────────────────────────────────────────
-    st.markdown('<div class="section-header">The global scoreboard — how the world\'s welfare is distributed</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-header">The global scoreboard — how the world\'s welfare is distributed ({scenario_name})</div>', unsafe_allow_html=True)
 
     _wf_all = welfare_vals  # current scenario's welfare for all 194 countries
     _n_lose = int((_wf_all < 0).sum())
