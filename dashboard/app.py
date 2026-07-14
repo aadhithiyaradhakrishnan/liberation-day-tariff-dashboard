@@ -240,6 +240,20 @@ def load_tariffs():
     return df.sort_values("tariff_pct", ascending=False).reset_index(drop=True)
 
 @st.cache_data
+def load_bilateral():
+    """US bilateral trade vectors from the 194x194 CEPII matrix (units: $1000s).
+    Column id_US = each country's exports TO the US (US imports by partner);
+    row id_US = US exports to each partner."""
+    t = pd.read_csv(os.path.join(DATA, "base_data", "trade_cepii.csv")).values.astype(float)
+    b = np.load(os.path.join(OUT, "baseline_results.npz"), allow_pickle=True)
+    id_us = int(b["id_US"])
+    us_imports = np.nan_to_num(t[:, id_us])   # partner -> US
+    us_exports = np.nan_to_num(t[id_us, :])   # US -> partner
+    d_trade = b["d_trade"]                     # global trade change per scenario (%)
+    d_employment = b["d_employment"]           # US employment change per scenario (%)
+    return us_imports, us_exports, d_trade, d_employment
+
+@st.cache_data
 def load_pharma_risk():
     risk    = pd.read_csv(os.path.join(OUT, "pharma1_supply_chain_risk_2024.csv"))
     top_sup = pd.read_csv(os.path.join(OUT, "pharma1_objective1_dependence_top_suppliers.csv"))
@@ -380,13 +394,19 @@ with tab1:
     # Column order in results: [welfare, deficit, exports/GDP, imports/GDP, employment, CPI, rev/GDP]
     us_vals = results_15pct[id_US, :7] if is_15pct else results[id_US, :7, sc]
 
+    # Bilateral trade vectors (US imports/exports by partner) + scenario scalars
+    _us_imports_vec, _us_exports_vec, _d_trade_sc, _d_emp_sc = load_bilateral()
+    # Import-weighted average tariff — what US buyers actually pay on average
+    _tariff_by_idx = tariff_df.set_index("iso3").reindex(cl["iso3"])["tariff_pct"].fillna(0).values
+    _wt_avg_tariff = float((_us_imports_vec * _tariff_by_idx).sum() / max(_us_imports_vec.sum(), 1))
+
     kpi_data = [
         ("Living Standards Change", f"{us_vals[0]:+.2f}%", "positive" if us_vals[0] > 0 else "negative", "US real income"),
         ("Consumer Price Change",   f"{us_vals[5]:+.1f}%", "negative" if us_vals[5] > 0 else "positive", "CPI"),
         ("Import Volume Change",    f"{us_vals[3]:+.1f}%", "negative" if us_vals[3] < 0 else "positive", "Imports / GDP"),
         ("Export Volume Change",    f"{us_vals[2]:+.1f}%", "negative" if us_vals[2] < 0 else "positive", "Exports / GDP"),
         ("Employment Change",       f"{us_vals[4]:+.2f}%", "positive" if us_vals[4] > 0 else "negative", "US labor market"),
-        ("Trade Deficit Change",    f"{us_vals[1]:+.1f}%", "neutral",  "Deficit % change"),
+        ("Import-Weighted Avg Tariff", f"{_wt_avg_tariff:.1f}%", "negative", "Weighted by what US actually buys"),
     ]
     cols = st.columns(6)
     for col, (label, val, cls, sub) in zip(cols, kpi_data):
@@ -539,6 +559,82 @@ with tab1:
     fig_tariff.update_yaxes(autorange="reversed")
     st.plotly_chart(fig_tariff, use_container_width=True)
 
+    # ── Was Liberation Day really "reciprocal"? ──────────────────────────────
+    st.markdown('<div class="section-header">Was Liberation Day really "reciprocal"?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The administration said tariffs were proportional to each country\'s trade imbalance with the US. This scatter tests that claim: if it were true, the dots would line up neatly. China (−$295B deficit → 54%) fits; but Vietnam (−$108B → 46%) is taxed far harder than Germany (−$85B → 20%). Bubble size = how much the US imports from that country.</div>', unsafe_allow_html=True)
+
+    _recip = cl.copy()
+    _recip["imports_from"] = _us_imports_vec
+    _recip["exports_to"]   = _us_exports_vec
+    _recip["deficit_bn"]   = (_us_exports_vec - _us_imports_vec) / 1e6
+    _recip["imports_bn"]   = _us_imports_vec / 1e6
+    _recip["tariff_pct"]   = _tariff_by_idx
+    _recip = _recip[_recip.index != id_US]
+    _recip_top = _recip.nlargest(40, "imports_from").copy()
+
+    _sel_name_sc = _country_profile["country"] if _country_profile else None
+    if _sel_name_sc and _sel_name_sc not in _recip_top["CountryName"].values:
+        _extra_sc = _recip[_recip["CountryName"] == _sel_name_sc]
+        if not _extra_sc.empty:
+            _recip_top = pd.concat([_recip_top, _extra_sc])
+
+    _sc_colors = ["#22d3a0" if (_sel_name_sc and n == _sel_name_sc) else
+                  ("#f87171" if t >= 40 else "#fb923c" if t >= 20 else "#fbbf24")
+                  for n, t in zip(_recip_top["CountryName"], _recip_top["tariff_pct"])]
+    fig_recip = go.Figure(go.Scatter(
+        x=_recip_top["deficit_bn"], y=_recip_top["tariff_pct"],
+        mode="markers+text",
+        marker=dict(
+            size=np.sqrt(np.maximum(_recip_top["imports_bn"], 1)) * 2.2,
+            color=_sc_colors, opacity=0.85,
+            line=dict(color="#0f1117", width=1),
+        ),
+        text=[n if (abs(d) > 40 or t >= 40 or (_sel_name_sc and n == _sel_name_sc)) else ""
+              for n, d, t in zip(_recip_top["CountryName"], _recip_top["deficit_bn"], _recip_top["tariff_pct"])],
+        textposition="top center", textfont=dict(size=10, color="#94a3b8"),
+        hovertemplate="<b>%{customdata[0]}</b><br>US bilateral balance: %{x:,.0f}B<br>Tariff: %{y:.0f}%<br>US imports: $%{customdata[1]:,.0f}B<extra></extra>",
+        customdata=np.stack([_recip_top["CountryName"], _recip_top["imports_bn"]], axis=-1),
+    ))
+    fig_recip.add_vline(x=0, line_color="#4b5563", line_width=1, line_dash="dot")
+    fig_recip.update_layout(**PLOTLY_THEME, height=440,
+        title="US Bilateral Trade Balance vs Liberation Day Tariff (top 40 US import partners)")
+    fig_recip.update_xaxes(title_text="US Trade Balance with Country ($B — negative = US deficit)")
+    fig_recip.update_yaxes(title_text="Liberation Day Tariff (%)")
+    st.plotly_chart(fig_recip, use_container_width=True)
+
+    # ── Who depends most on the US market? ───────────────────────────────────
+    st.markdown('<div class="section-header">Who depends most on the US market — and what happened to them?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Each bar is a country\'s exports to the US as a share of its own GDP — how much of its economy rides on American demand. Bar color shows what the tariffs did to it (red = economy shrank). <b>Dependence predicts damage</b>: Vietnam sends 25% of its GDP to the US and lost 11%; Guyana sends 18% and lost 18.5%.</div>', unsafe_allow_html=True)
+
+    _dep_df = cl.copy()
+    _dep_df["dep_pct"] = np.where(Y_i > 0, _us_imports_vec / Y_i * 100, 0)
+    _dep_df["welfare"] = results[:, 0, 0]
+    _dep_df = _dep_df[_dep_df.index != id_US]
+    _dep_top = _dep_df.nlargest(20, "dep_pct").copy()
+
+    _sel_name_dep = _country_profile["country"] if _country_profile else None
+    if _sel_name_dep and _sel_name_dep not in _dep_top["CountryName"].values:
+        _extra_dep = _dep_df[_dep_df["CountryName"] == _sel_name_dep]
+        if not _extra_dep.empty:
+            _dep_top = pd.concat([_dep_top, _extra_dep])
+
+    _dep_colors = ["#ffffff" if (_sel_name_dep and n == _sel_name_dep) else
+                   ("#f87171" if w < -5 else "#fb923c" if w < -1 else "#fbbf24" if w < 0 else "#22d3a0")
+                   for n, w in zip(_dep_top["CountryName"], _dep_top["welfare"])]
+    fig_dep_us = go.Figure(go.Bar(
+        x=_dep_top["dep_pct"], y=_dep_top["CountryName"],
+        orientation="h", marker_color=_dep_colors,
+        marker_line_color=["#22d3a0" if (_sel_name_dep and n == _sel_name_dep) else "rgba(0,0,0,0)" for n in _dep_top["CountryName"]],
+        marker_line_width=[3 if (_sel_name_dep and n == _sel_name_dep) else 0 for n in _dep_top["CountryName"]],
+        text=[f"{d:.1f}% of GDP | welfare {w:+.1f}%" for d, w in zip(_dep_top["dep_pct"], _dep_top["welfare"])],
+        textposition="outside",
+    ))
+    fig_dep_us.update_layout(**PLOTLY_THEME, height=520,
+        title="Exports to US as % of Own GDP — colored by welfare outcome (red = worst hit)")
+    fig_dep_us.update_xaxes(title_text="Exports to US / GDP (%)", range=[0, _dep_top["dep_pct"].max() * 1.45])
+    fig_dep_us.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig_dep_us, use_container_width=True)
+
     # ── World map ──────────────────────────────────────────────────────────
     st.markdown('<div class="section-header">How each country\'s economy was affected</div>', unsafe_allow_html=True)
     st.markdown('<div class="insight-box">Welfare change is the estimated effect on each country\'s real income. Green = economic gains; red = losses. All 194 countries are modelled simultaneously in a general equilibrium framework.</div>', unsafe_allow_html=True)
@@ -681,6 +777,137 @@ with tab1:
             title=f"US Economic Outcomes — {scenario_name}",
             yaxis_title="% Change")
         st.plotly_chart(fig_met, use_container_width=True)
+
+    # ── What happens to world trade? ─────────────────────────────────────────
+    st.markdown('<div class="section-header">What happens to world trade under each policy?</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Every scenario shrinks global trade. Liberation Day alone cuts it by ~9.4%; if trading partners retaliate optimally, the damage deepens to ~12.3% — retaliation roughly doubles the trade destruction while barely helping anyone.</div>', unsafe_allow_html=True)
+
+    _SC_SCALAR_MAP = [
+        ("USTR + No Retaliation",         0),
+        ("Optimal Tariff",                3),
+        ("USTR + Reciprocal Retaliation", 5),
+        ("USTR + Optimal Retaliation",    4),
+    ]
+    _sc_labels_ws  = [n for n, _ in _SC_SCALAR_MAP]
+    _sc_trade_ws   = [float(_d_trade_sc[i]) for _, i in _SC_SCALAR_MAP]
+    _sc_emp_ws     = [float(_d_emp_sc[i])   for _, i in _SC_SCALAR_MAP]
+
+    c_ws1, c_ws2 = st.columns(2)
+    with c_ws1:
+        fig_wtrade = go.Figure(go.Bar(
+            x=_sc_labels_ws, y=_sc_trade_ws,
+            marker_color=["#f87171" if v < -10 else "#fb923c" for v in _sc_trade_ws],
+            text=[f"{v:+.1f}%" for v in _sc_trade_ws], textposition="outside",
+        ))
+        fig_wtrade.add_hline(y=0, line_color="#4b5563", line_width=1)
+        fig_wtrade.update_layout(**PLOTLY_THEME, height=340,
+            title="Global Trade Volume Change by Scenario", xaxis_tickangle=-20)
+        fig_wtrade.update_yaxes(title_text="% Change in World Trade", range=[-15, 2])
+        st.plotly_chart(fig_wtrade, use_container_width=True)
+    with c_ws2:
+        fig_wemp = go.Figure(go.Bar(
+            x=_sc_labels_ws, y=_sc_emp_ws,
+            marker_color=["#22d3a0" if v >= 0 else "#f87171" for v in _sc_emp_ws],
+            text=[f"{v:+.2f}%" for v in _sc_emp_ws], textposition="outside",
+        ))
+        fig_wemp.add_hline(y=0, line_color="#4b5563", line_width=1)
+        fig_wemp.update_layout(**PLOTLY_THEME, height=340,
+            title="US Employment Change by Scenario", xaxis_tickangle=-20)
+        fig_wemp.update_yaxes(title_text="% Change in US Employment")
+        st.plotly_chart(fig_wemp, use_container_width=True)
+
+    # ── US vs major economies ────────────────────────────────────────────────
+    st.markdown('<div class="section-header">Did America come out ahead of its rivals?</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="insight-box">Head-to-head outcomes for the world\'s major economies under <b>{scenario_name}</b>. Change the scenario selector at the top of this tab to compare.</div>', unsafe_allow_html=True)
+
+    _MAJORS = [("USA", "United States"), ("CHN", "China"), ("DEU", "Germany"),
+               ("JPN", "Japan"), ("GBR", "United Kingdom"), ("CAN", "Canada"), ("MEX", "Mexico")]
+    _maj_rows = []
+    for _iso_m, _name_m in _MAJORS:
+        _midx = cl.index[cl["iso3"] == _iso_m]
+        if len(_midx) == 0:
+            continue
+        _mi = int(_midx[0])
+        _mvals = results_15pct[_mi, :7] if is_15pct else results[_mi, :7, sc]
+        _maj_rows.append({"name": _name_m, "welfare": float(_mvals[0]),
+                          "cpi": float(_mvals[5]), "exports": float(_mvals[2])})
+    _maj_df = pd.DataFrame(_maj_rows)
+
+    fig_maj = go.Figure()
+    fig_maj.add_trace(go.Bar(
+        name="Living Standards", x=_maj_df["name"], y=_maj_df["welfare"],
+        marker_color=["#22d3a0" if v > 0 else "#f87171" for v in _maj_df["welfare"]],
+        text=[f"{v:+.2f}%" for v in _maj_df["welfare"]], textposition="outside",
+    ))
+    fig_maj.add_trace(go.Bar(
+        name="Consumer Prices", x=_maj_df["name"], y=_maj_df["cpi"],
+        marker_color="#fbbf24", opacity=0.75,
+        text=[f"{v:+.1f}%" for v in _maj_df["cpi"]], textposition="outside",
+    ))
+    fig_maj.add_trace(go.Bar(
+        name="Export Volume", x=_maj_df["name"], y=_maj_df["exports"],
+        marker_color="#60a5fa", opacity=0.75,
+        text=[f"{v:+.1f}%" for v in _maj_df["exports"]], textposition="outside",
+    ))
+    fig_maj.add_hline(y=0, line_color="#4b5563", line_width=1)
+    fig_maj.update_layout(**PLOTLY_THEME, height=400,
+        title=f"Major Economies Head-to-Head — {scenario_name}",
+        barmode="group",
+        legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
+    fig_maj.update_yaxes(title_text="% Change")
+    st.plotly_chart(fig_maj, use_container_width=True)
+
+    # ── The global scoreboard ────────────────────────────────────────────────
+    st.markdown('<div class="section-header">The global scoreboard — how the world\'s welfare is distributed</div>', unsafe_allow_html=True)
+
+    _wf_all = welfare_vals  # current scenario's welfare for all 194 countries
+    _n_lose = int((_wf_all < 0).sum())
+    _n_gain = int((_wf_all > 0).sum())
+    _global_bn = float((_wf_all / 100 * Y_i).sum() / 1e6)  # Y_i in $1000s → $B
+
+    c_gs1, c_gs2, c_gs3 = st.columns(3)
+    with c_gs1:
+        _g_cls = "negative" if _global_bn < 0 else "positive"
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Global welfare change</div>
+          <div class="kpi-value {_g_cls}" style="font-size:28px">{_global_bn:+,.0f}B</div>
+          <div class="kpi-sub">GDP-weighted dollar total, all 194 countries</div>
+        </div>""", unsafe_allow_html=True)
+    with c_gs2:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Countries that lose</div>
+          <div class="kpi-value negative" style="font-size:28px">{_n_lose}</div>
+          <div class="kpi-sub">welfare change below zero</div>
+        </div>""", unsafe_allow_html=True)
+    with c_gs3:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Countries that gain</div>
+          <div class="kpi-value positive" style="font-size:28px">{_n_gain}</div>
+          <div class="kpi-sub">mostly small economies picking up rerouted trade</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown('<div class="insight-box" style="margin-top:12px">Roughly half the world\'s countries technically "gain" — but the gains are small and concentrated in minor economies, while the losses are large and concentrated in major US trading partners. The world as a whole is poorer.</div>', unsafe_allow_html=True)
+
+    _hist_df = pd.DataFrame({"welfare": _wf_all})
+    fig_hist_w = go.Figure()
+    fig_hist_w.add_trace(go.Histogram(
+        x=_hist_df[_hist_df["welfare"] < 0]["welfare"],
+        xbins=dict(start=-20, end=6, size=0.5),
+        marker_color="#f87171", name="Losers", opacity=0.85,
+    ))
+    fig_hist_w.add_trace(go.Histogram(
+        x=_hist_df[_hist_df["welfare"] >= 0]["welfare"],
+        xbins=dict(start=-20, end=6, size=0.5),
+        marker_color="#22d3a0", name="Winners", opacity=0.85,
+    ))
+    fig_hist_w.add_vline(x=0, line_color="#e2e8f0", line_width=1, line_dash="dash")
+    fig_hist_w.update_layout(**PLOTLY_THEME, height=320,
+        title="Distribution of Welfare Changes Across 194 Countries",
+        barmode="overlay",
+        legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
+    fig_hist_w.update_xaxes(title_text="Welfare Change (%)")
+    fig_hist_w.update_yaxes(title_text="# of Countries")
+    st.plotly_chart(fig_hist_w, use_container_width=True)
 
     # ── Top 20 winners / losers ────────────────────────────────────────────
     st.markdown('<div class="section-header">Biggest Winners and Biggest Losers</div>', unsafe_allow_html=True)
