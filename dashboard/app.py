@@ -240,6 +240,45 @@ def load_tariffs():
     return df.sort_values("tariff_pct", ascending=False).reset_index(drop=True)
 
 @st.cache_data
+def load_mfg_reality():
+    """Post-Liberation Day reality check data:
+    - USITC monthly imports + calculated duties by HTS chapter, 2022-2025
+    - BEA quarterly gross output by industry, 2024Q1-2026Q1 (nominal, SAAR)"""
+    import warnings
+    warnings.filterwarnings("ignore")
+    months = ["January","February","March","April","May","June",
+              "July","August","September","October","November","December"]
+
+    def _parse_usitc(sheet):
+        df = pd.read_excel(os.path.join(DATA, "USITC_Mfg_Imports_Monthly_2022_2025.xlsx"),
+                           sheet_name=sheet, header=2)
+        df.columns = [str(c).strip() for c in df.columns]
+        df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
+        df["HTS Number"] = pd.to_numeric(df["HTS Number"], errors="coerce")
+        df = df.dropna(subset=["Year", "HTS Number"])
+        rows = []
+        for _, r in df.iterrows():
+            for mi, m in enumerate(months, 1):
+                v = pd.to_numeric(r[m], errors="coerce")
+                if pd.notna(v) and v > 0:
+                    rows.append({"chapter": int(r["HTS Number"]),
+                                 "date": pd.Timestamp(int(r["Year"]), mi, 1),
+                                 "value": float(v)})
+        return pd.DataFrame(rows)
+
+    imports_long = _parse_usitc("Customs Value")
+    duties_long  = _parse_usitc("Calculated Duties")
+
+    bea = pd.read_excel(os.path.join(DATA, "BEA_Gross_Output_by_Industry_latest.xlsx"), header=None)
+    bea_sub = bea.iloc[7:45, :11].copy()
+    bea_sub.columns = ["line", "industry", "2024Q1", "2024Q2", "2024Q3", "2024Q4",
+                       "2025Q1", "2025Q2", "2025Q3", "2025Q4", "2026Q1"]
+    bea_sub["industry"] = bea_sub["industry"].astype(str).str.strip()
+    for c in bea_sub.columns[2:]:
+        bea_sub[c] = pd.to_numeric(bea_sub[c], errors="coerce")
+    return imports_long, duties_long, bea_sub
+
+@st.cache_data
 def load_bilateral():
     """US bilateral trade vectors from the 194x194 CEPII matrix (units: $1000s).
     Column id_US = each country's exports TO the US (US imports by partner);
@@ -1600,6 +1639,151 @@ with tab4:
         st.plotly_chart(fig_imp, use_container_width=True)
     with c_imp2:
         st.markdown('<div class="insight-box" style="margin-top:20px"><b>Manufacturing −80.8%</b>: The largest trade shock in the model. High import penetration (32%) combined with a 27% average tariff drives a near-collapse of import demand.<br><br><b>Pharma −38.2%</b>: Severe, but smaller because US domestic pharma partially substitutes for imports and prices are less elastic.</div>', unsafe_allow_html=True)
+
+    # ── REALITY CHECK: what actually happened after Liberation Day ──────────
+    st.markdown('<div class="section-header">⚡ Reality check: what ACTUALLY happened after Liberation Day</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The section above is a <b>model prediction</b>. This section is <b>measured reality</b> — official USITC customs data (monthly imports & duties collected, through Dec 2025) and BEA quarterly output (through Q1 2026). The model predicted an 80.8% import collapse; actual manufacturing imports were roughly <b>flat</b>. The tariffs were real — duty collections quintupled — but trade proved far more resilient than the linearised model assumed.</div>', unsafe_allow_html=True)
+
+    _imp_rl, _dut_rl, _bea_rl = load_mfg_reality()
+    _CH_NAMES_RL = {39: "Plastics", 72: "Iron & Steel", 73: "Steel Articles",
+                    84: "Machinery", 85: "Electronics", 87: "Vehicles",
+                    94: "Furniture", 95: "Toys & Sports"}
+
+    # Pre/post comparison: Apr-Dec 2025 vs Apr-Dec 2024 (same months = seasonality-controlled)
+    _pre_rl  = _imp_rl[(_imp_rl["date"] >= "2024-04-01") & (_imp_rl["date"] <= "2024-12-01")]
+    _post_rl = _imp_rl[(_imp_rl["date"] >= "2025-04-01") & (_imp_rl["date"] <= "2025-12-01")]
+    _tot_chg_rl = (_post_rl["value"].sum() / _pre_rl["value"].sum() - 1) * 100
+
+    # Effective tariff rate per month
+    _mv_rl = _imp_rl.groupby("date")["value"].sum().rename("value").to_frame()
+    _mv_rl["duty"] = _dut_rl.groupby("date")["value"].sum()
+    _mv_rl["rate"] = _mv_rl["duty"] / _mv_rl["value"] * 100
+    _rate_2024_rl = float(_mv_rl.loc[(_mv_rl.index >= "2024-01-01") & (_mv_rl.index <= "2024-12-01"), "rate"].mean())
+    _rate_peak_rl = float(_mv_rl.loc[_mv_rl.index >= "2025-04-01", "rate"].max())
+
+    # BEA manufacturing output growth 2025Q1 -> 2026Q1
+    _bea_mfg_rl = _bea_rl[_bea_rl["industry"] == "Manufacturing"]
+    _bea_chg_rl = float((_bea_mfg_rl["2026Q1"].iloc[0] / _bea_mfg_rl["2025Q1"].iloc[0] - 1) * 100) if not _bea_mfg_rl.empty else 0
+
+    _rc1, _rc2, _rc3, _rc4 = st.columns(4)
+    with _rc1:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Model predicted imports</div>
+          <div class="kpi-value negative" style="font-size:26px">−80.8%</div>
+          <div class="kpi-sub">GE model estimate</div>
+        </div>""", unsafe_allow_html=True)
+    with _rc2:
+        _tc_cls = "positive" if _tot_chg_rl > 0 else "negative"
+        st.markdown(f"""<div class="kpi-card" style="border:1px solid #22d3a0">
+          <div class="kpi-label">Actual imports (Apr–Dec 2025 vs 2024)</div>
+          <div class="kpi-value {_tc_cls}" style="font-size:26px">{_tot_chg_rl:+.1f}%</div>
+          <div class="kpi-sub">USITC customs data, 8 mfg chapters</div>
+        </div>""", unsafe_allow_html=True)
+    with _rc3:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Effective tariff rate jump</div>
+          <div class="kpi-value negative" style="font-size:26px">{_rate_2024_rl:.1f}% → {_rate_peak_rl:.0f}%</div>
+          <div class="kpi-sub">duties ÷ import value, actual collections</div>
+        </div>""", unsafe_allow_html=True)
+    with _rc4:
+        _bc_cls = "positive" if _bea_chg_rl > 0 else "negative"
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">US factory output since tariffs</div>
+          <div class="kpi-value {_bc_cls}" style="font-size:26px">{_bea_chg_rl:+.1f}%</div>
+          <div class="kpi-sub">BEA nominal output, 2025Q1 → 2026Q1</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("")
+    _rr1, _rr2 = st.columns(2)
+    with _rr1:
+        # Monthly imports by chapter
+        fig_imp_rl = go.Figure()
+        _colors_rl = ["#2563eb","#f87171","#fb923c","#22d3a0","#a78bfa","#fbbf24","#38bdf8","#f472b6"]
+        for _i_rl, _ch_rl in enumerate(sorted(_imp_rl["chapter"].unique())):
+            _sub_rl = _imp_rl[_imp_rl["chapter"] == _ch_rl].sort_values("date")
+            fig_imp_rl.add_trace(go.Scatter(
+                x=_sub_rl["date"], y=_sub_rl["value"] / 1e9,
+                name=_CH_NAMES_RL.get(_ch_rl, str(_ch_rl)),
+                line=dict(color=_colors_rl[_i_rl % len(_colors_rl)], width=1.8),
+            ))
+        fig_imp_rl.add_vline(x="2025-04-02", line_dash="dash", line_color="#f87171",
+            annotation_text="Liberation Day", annotation_position="top left",
+            annotation_font_color="#f87171")
+        fig_imp_rl.update_layout(**PLOTLY_THEME, height=380,
+            title="Actual Monthly US Manufacturing Imports by Product (2022–2025)",
+            legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
+        fig_imp_rl.update_yaxes(title_text="Imports ($B/month)")
+        st.plotly_chart(fig_imp_rl, use_container_width=True)
+    with _rr2:
+        # Effective tariff rate line
+        _mv_plot_rl = _mv_rl.reset_index().sort_values("date")
+        fig_rate_rl = go.Figure(go.Scatter(
+            x=_mv_plot_rl["date"], y=_mv_plot_rl["rate"],
+            line=dict(color="#f87171", width=2.5),
+            fill="tozeroy", fillcolor="rgba(248,113,113,0.12)",
+        ))
+        fig_rate_rl.add_vline(x="2025-04-02", line_dash="dash", line_color="#e2e8f0",
+            annotation_text="Liberation Day", annotation_position="top left",
+            annotation_font_color="#e2e8f0")
+        fig_rate_rl.update_layout(**PLOTLY_THEME, height=380,
+            title="Effective Tariff Rate Actually Paid (duties ÷ import value)")
+        fig_rate_rl.update_yaxes(title_text="Effective Rate (%)")
+        st.plotly_chart(fig_rate_rl, use_container_width=True)
+
+    _rr3, _rr4 = st.columns(2)
+    with _rr3:
+        # Per-chapter change diverging bar
+        _chg_rows_rl = []
+        for _ch_rl in sorted(_imp_rl["chapter"].unique()):
+            _p1_rl = _pre_rl[_pre_rl["chapter"] == _ch_rl]["value"].sum()
+            _p2_rl = _post_rl[_post_rl["chapter"] == _ch_rl]["value"].sum()
+            if _p1_rl > 0:
+                _chg_rows_rl.append({"name": _CH_NAMES_RL.get(_ch_rl, str(_ch_rl)),
+                                     "chg": (_p2_rl / _p1_rl - 1) * 100})
+        _chg_df_rl = pd.DataFrame(_chg_rows_rl).sort_values("chg")
+        fig_chg_rl = go.Figure(go.Bar(
+            x=_chg_df_rl["chg"], y=_chg_df_rl["name"],
+            orientation="h",
+            marker_color=["#f87171" if v < 0 else "#22d3a0" for v in _chg_df_rl["chg"]],
+            text=[f"{v:+.1f}%" for v in _chg_df_rl["chg"]], textposition="outside",
+        ))
+        fig_chg_rl.add_vline(x=0, line_color="#4b5563", line_width=1)
+        fig_chg_rl.update_layout(**PLOTLY_THEME, height=360,
+            title="Actual Import Change by Product (Apr–Dec 2025 vs 2024)")
+        fig_chg_rl.update_xaxes(title_text="% Change", range=[-40, 40])
+        st.plotly_chart(fig_chg_rl, use_container_width=True)
+    with _rr4:
+        # BEA output indexed to 2025Q1
+        _bea_keys_rl = ["Manufacturing", "Primary metals", "Motor vehicles, bodies and trailers, and parts",
+                        "Machinery", "Computer and electronic products", "Chemical products"]
+        _bea_labels_rl = {"Manufacturing": "All Manufacturing", "Primary metals": "Primary Metals (steel)",
+                          "Motor vehicles, bodies and trailers, and parts": "Motor Vehicles",
+                          "Machinery": "Machinery", "Computer and electronic products": "Computers & Electronics",
+                          "Chemical products": "Chemicals"}
+        _qtrs_rl = ["2024Q1","2024Q2","2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1"]
+        fig_bea_rl = go.Figure()
+        _colors_bea_rl = ["#e2e8f0","#f87171","#fbbf24","#22d3a0","#a78bfa","#38bdf8"]
+        for _i_rl, _k_rl in enumerate(_bea_keys_rl):
+            _row_rl = _bea_rl[_bea_rl["industry"] == _k_rl]
+            if _row_rl.empty:
+                continue
+            _base_rl = float(_row_rl["2025Q1"].iloc[0])
+            _vals_rl = [float(_row_rl[q].iloc[0]) / _base_rl * 100 for q in _qtrs_rl]
+            fig_bea_rl.add_trace(go.Scatter(
+                x=_qtrs_rl, y=_vals_rl, name=_bea_labels_rl[_k_rl],
+                line=dict(color=_colors_bea_rl[_i_rl % len(_colors_bea_rl)],
+                          width=3 if _k_rl == "Manufacturing" else 1.6),
+            ))
+        fig_bea_rl.add_vline(x="2025Q2", line_dash="dash", line_color="#f87171",
+            annotation_text="Liberation Day", annotation_position="top left",
+            annotation_font_color="#f87171")
+        fig_bea_rl.update_layout(**PLOTLY_THEME, height=360,
+            title="US Factory Output After Tariffs (BEA quarterly, 2025Q1 = 100)",
+            legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
+        fig_bea_rl.update_yaxes(title_text="Index (2025Q1 = 100)")
+        st.plotly_chart(fig_bea_rl, use_container_width=True)
+
+    st.markdown('<div class="insight-box"><b>Why was the model so wrong on imports?</b> Three reasons: (1) the −80.8% is a <i>linearised</i> elasticity estimate that breaks down for large tariff shocks; (2) exemptions and USMCA carve-outs meant the effective rate peaked near 13%, not the 27% headline; (3) demand surged in exactly the categories America can\'t substitute — machinery imports <b>rose 26%</b> (data-center and AI capex boom) even as tariffed steel (−24%), vehicles (−18%) and toys (−21%) fell sharply. The tariffs were real — monthly duty collections roughly <b>5×</b> — but aggregate trade rerouted rather than collapsed. Note: BEA output is nominal, so part of the output "growth" is tariff-driven price increases.</div>', unsafe_allow_html=True)
 
     # ── What does US manufacturing actually make? ──────────────────────────
     st.markdown('<div class="section-header">What does US manufacturing actually make?</div>', unsafe_allow_html=True)
