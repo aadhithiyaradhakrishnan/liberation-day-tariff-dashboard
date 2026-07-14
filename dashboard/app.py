@@ -368,7 +368,7 @@ with st.sidebar:
                     f'</div>'
                     f'</div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🌐 Macro Overview", "💊 Pharma Supply Chain", "🛒 Retail & Consumer Prices", "🏭 Manufacturing Exposure", "🤖 AI Analyst", "🔌 MCP Analyst"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🌐 Macro Overview", "💊 Pharma Supply Chain", "🛒 Retail & Consumer Prices", "🏭 Manufacturing Exposure", "🤖 AI Analyst", "🔌 MCP Analyst", "🎛️ Build Your Scenario"])
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — MACRO OVERVIEW
@@ -2571,5 +2571,350 @@ with tab6:
     if user_input6:
         st.session_state.mcp6_messages.append({"role": "user", "content": user_input6, "charts": []})
         st.rerun()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TAB 7 — BUILD YOUR OWN SCENARIO
+# Users pick countries, set tariff rates, and get a full policy analysis:
+# welfare, consumer prices, $/household, tariff revenue, sector risks, and a
+# ranking against the paper's real GE scenarios. Engine: run_tariff_scenario
+# (linearised PE approximation, eps=4) via _compute_custom_scenario.
+# ═════════════════════════════════════════════════════════════════════════════
+with tab7:
+    _res_b7, _Y_b7, _idus_b7, _cl_b7, _res15_b7, _ = load_baseline()
+    _tdf_b7 = load_tariffs()
+    _imp_b7, _exp_b7, _, _ = load_bilateral()
+    _, _retail_b7 = load_retail()
+    _, _, _, _pharma_exp_b7 = load_pharma_outputs()
+
+    _PASSTHROUGH_B7 = float(_retail_b7.get("retail_product_passthrough", 0.297))
+    _EPS_B7 = 4.0
+    _N_HOUSEHOLDS = 132_000_000  # US households (Census, ~2023)
+
+    st.markdown('<div class="section-header">🎛️ Build Your Own Tariff Scenario</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Pick any countries, set your own tariff rates, and see what happens — to American wallets, to government revenue, and to the countries you tax. Results update live. (Fast partial-equilibrium approximation — directionally correct, not a full GE re-solve; assumes no retaliation.)</div>', unsafe_allow_html=True)
+
+    # LD reference rates by iso3 / name
+    _ld_rate_by_iso = dict(zip(_tdf_b7["iso3"], _tdf_b7["tariff_pct"]))
+    _iso_by_name_b7 = dict(zip(_cl_b7["CountryName"], _cl_b7["iso3"]))
+    _idx_by_iso_b7  = {iso: i for i, iso in enumerate(_cl_b7["iso3"])}
+
+    # ── Apply pending preset BEFORE sliders instantiate ─────────────────────
+    _pending_b7 = st.session_state.pop("_bys_preset", None)
+    if _pending_b7:
+        for _k7, _v7 in _pending_b7.items():
+            st.session_state[_k7] = _v7
+
+    # ── Country picker ───────────────────────────────────────────────────────
+    _default_b7 = [n for n in ["China", "Vietnam", "Mexico", "Canada", "Germany", "Japan"]
+                   if n in _iso_by_name_b7]
+    _sel_b7 = st.multiselect("Countries in your scenario", sorted(_cl_b7["CountryName"].tolist()),
+                             default=_default_b7, key="bys_countries")
+
+    # ── Rate sliders (3 columns) ─────────────────────────────────────────────
+    _rates_b7 = {}   # iso3 -> user rate (%)
+    _lds_b7   = {}   # iso3 -> LD rate (%)
+    if _sel_b7:
+        _slider_cols = st.columns(3)
+        for _i7, _cname7 in enumerate(_sel_b7):
+            _iso7 = _iso_by_name_b7[_cname7]
+            _ld7  = int(round(_ld_rate_by_iso.get(_iso7, 10)))
+            with _slider_cols[_i7 % 3]:
+                _rates_b7[_iso7] = st.slider(f"{_cname7} (LD: {_ld7}%)", 0, 100, _ld7, 1,
+                                             format="%d%%", key=f"bys_rate_{_iso7}")
+            _lds_b7[_iso7] = _ld7
+
+    # ── Preset buttons ───────────────────────────────────────────────────────
+    _p1, _p2, _p3, _p4, _p5 = st.columns(5)
+    def _mk_preset_b7(vals):
+        st.session_state["_bys_preset"] = vals
+        st.rerun()
+    with _p1:
+        if st.button("↺ Liberation Day", use_container_width=True, key="bys_p_ld"):
+            _mk_preset_b7({f"bys_rate_{iso}": _lds_b7[iso] for iso in _rates_b7})
+    with _p2:
+        if st.button("🕊️ Free Trade (0%)", use_container_width=True, key="bys_p_free"):
+            _mk_preset_b7({f"bys_rate_{iso}": 0 for iso in _rates_b7})
+    with _p3:
+        if st.button("🌍 Flat 10%", use_container_width=True, key="bys_p_10"):
+            _mk_preset_b7({f"bys_rate_{iso}": 10 for iso in _rates_b7})
+    with _p4:
+        if st.button("⚖️ Uniform 25%", use_container_width=True, key="bys_p_25"):
+            _mk_preset_b7({f"bys_rate_{iso}": 25 for iso in _rates_b7})
+    with _p5:
+        if st.button("🔥 Max Pressure (CHN 100%)", use_container_width=True, key="bys_p_max"):
+            _vals = {f"bys_rate_{iso}": _lds_b7[iso] for iso in _rates_b7}
+            if "CHN" in _rates_b7:
+                _vals["bys_rate_CHN"] = 100
+            _mk_preset_b7(_vals)
+
+    if not _sel_b7:
+        st.info("Select at least one country above to build a scenario.")
+    else:
+        # ── Run the PE model ────────────────────────────────────────────────
+        _frozen_b7 = tuple(sorted((iso, r) for iso, r in _rates_b7.items()))
+        _pe_b7 = _compute_custom_scenario(_frozen_b7)
+        _pe_ctys_b7 = _pe_b7.get("data", {}).get("countries", [])
+        _pe_us_b7 = next((r for r in _pe_ctys_b7 if r.get("iso3") == "USA"), {})
+        _wd_us_b7 = float(_pe_us_b7.get("welfare_delta_pct") or 0)
+        _bw_us_b7 = float(_pe_us_b7.get("baseline_welfare_pct") or 0)
+        _nw_us_b7 = float(_pe_us_b7.get("new_welfare_pct") or 0)
+
+        _changed_b7 = {iso: r for iso, r in _rates_b7.items() if r != _lds_b7[iso]}
+        _n_changed_b7 = len(_changed_b7)
+
+        # ── Derived analysis: prices, household cost, revenue ───────────────
+        _tot_imp_b7 = float(_imp_b7.sum())
+        _dcpi_b7 = 0.0          # consumer price change (%)
+        _hh_cost_b7 = 0.0       # extra $ per household per year
+        for _iso7, _r7 in _rates_b7.items():
+            _ci7 = _idx_by_iso_b7.get(_iso7)
+            if _ci7 is None:
+                continue
+            _dtau7 = (_r7 - _lds_b7[_iso7]) / 100.0
+            _share7 = float(_imp_b7[_ci7]) / max(_tot_imp_b7, 1)
+            _dcpi_b7 += _share7 * _dtau7 * _PASSTHROUGH_B7 * 100
+            _hh_cost_b7 += float(_imp_b7[_ci7]) * 1000 * _dtau7 * _PASSTHROUGH_B7
+        _hh_cost_b7 /= _N_HOUSEHOLDS
+
+        # Elasticity-consistent revenue: M(tau) = M_2023 * ((1+tau)/(1+tau_LD))^(-eps)
+        def _revenue_b7(rate_fn):
+            _rev = 0.0
+            for _isoX, _ldX in _ld_rate_by_iso.items():
+                _ciX = _idx_by_iso_b7.get(_isoX)
+                if _ciX is None or _ciX == _idus_b7:
+                    continue
+                _tau_new = rate_fn(_isoX, _ldX) / 100.0
+                _tau_ld  = _ldX / 100.0
+                _m_adj = float(_imp_b7[_ciX]) * ((1 + _tau_new) / (1 + _tau_ld)) ** (-_EPS_B7)
+                _rev += _tau_new * _m_adj * 1000  # $ (imports are in $1000s)
+            return _rev
+        _rev_user_b7 = _revenue_b7(lambda iso, ld: _rates_b7.get(iso, ld))
+        _rev_ld_b7   = _revenue_b7(lambda iso, ld: ld)
+        _drev_bn_b7  = (_rev_user_b7 - _rev_ld_b7) / 1e9
+
+        # World impact across changed countries
+        _world_deltas_b7 = [float(r.get("welfare_delta_pct") or 0) for r in _pe_ctys_b7
+                            if r.get("iso3") != "USA" and r.get("iso3") in _changed_b7]
+        _avg_world_b7 = sum(_world_deltas_b7) / len(_world_deltas_b7) if _world_deltas_b7 else 0.0
+        _n_win_b7  = sum(1 for v in _world_deltas_b7 if v > 0)
+        _n_lose_b7 = sum(1 for v in _world_deltas_b7 if v < 0)
+
+        # ── Scorecard ────────────────────────────────────────────────────────
+        st.markdown('<div class="section-header">Your scenario scorecard</div>', unsafe_allow_html=True)
+        if _n_changed_b7 == 0:
+            st.markdown('<div class="insight-box">You\'re currently at exact Liberation Day rates — drag any slider or hit a preset to see your scenario\'s impact.</div>', unsafe_allow_html=True)
+
+        _sc1, _sc2, _sc3, _sc4 = st.columns(4)
+        with _sc1:
+            _w_cls7 = "positive" if _wd_us_b7 > 0 else ("neutral" if _wd_us_b7 == 0 else "negative")
+            _w_verdict7 = "America better off" if _wd_us_b7 > 0 else ("No change" if _wd_us_b7 == 0 else "America worse off")
+            st.markdown(f"""<div class="kpi-card">
+              <div class="kpi-label">US Wellbeing vs Liberation Day</div>
+              <div class="kpi-value {_w_cls7}" style="font-size:26px">{_wd_us_b7:+.2f}pp</div>
+              <div class="kpi-sub">{_w_verdict7}</div>
+            </div>""", unsafe_allow_html=True)
+        with _sc2:
+            _p_cls7 = "negative" if _dcpi_b7 > 0 else ("neutral" if _dcpi_b7 == 0 else "positive")
+            _p_verdict7 = "Prices rise" if _dcpi_b7 > 0 else ("No change" if _dcpi_b7 == 0 else "Prices fall")
+            st.markdown(f"""<div class="kpi-card">
+              <div class="kpi-label">Consumer Prices</div>
+              <div class="kpi-value {_p_cls7}" style="font-size:26px">{_dcpi_b7:+.2f}%</div>
+              <div class="kpi-sub">{_p_verdict7} · {_hh_cost_b7:+,.0f} $/household/yr</div>
+            </div>""", unsafe_allow_html=True)
+        with _sc3:
+            _r_cls7 = "positive" if _drev_bn_b7 > 0 else ("neutral" if _drev_bn_b7 == 0 else "negative")
+            st.markdown(f"""<div class="kpi-card">
+              <div class="kpi-label">Tariff Revenue vs Liberation Day</div>
+              <div class="kpi-value {_r_cls7}" style="font-size:26px">{_drev_bn_b7:+,.0f}B</div>
+              <div class="kpi-sub">demand-adjusted (imports shrink when taxed)</div>
+            </div>""", unsafe_allow_html=True)
+        with _sc4:
+            _wl_cls7 = "positive" if _avg_world_b7 > 0 else ("neutral" if _avg_world_b7 == 0 else "negative")
+            st.markdown(f"""<div class="kpi-card">
+              <div class="kpi-label">Impact on Countries You Changed</div>
+              <div class="kpi-value {_wl_cls7}" style="font-size:26px">{_avg_world_b7:+.2f}pp</div>
+              <div class="kpi-sub">{_n_win_b7} gain · {_n_lose_b7} lose</div>
+            </div>""", unsafe_allow_html=True)
+
+        # ── Sector risk callouts ────────────────────────────────────────────
+        _pharma_hit_b7 = 0.0
+        for _iso7, _r7 in _changed_b7.items():
+            if _r7 > _lds_b7[_iso7] and "iso3" in _pharma_exp_b7.columns:
+                _prow7 = _pharma_exp_b7[_pharma_exp_b7["iso3"] == _iso7]
+                if not _prow7.empty:
+                    _pharma_hit_b7 += float(_prow7["import_share_pct"].iloc[0])
+        _imp_touched_b7 = sum(float(_imp_b7[_idx_by_iso_b7[iso]]) for iso in _changed_b7 if iso in _idx_by_iso_b7)
+        _imp_touched_bn_b7 = _imp_touched_b7 / 1e6
+        _imp_touched_pct_b7 = _imp_touched_b7 / max(_tot_imp_b7, 1) * 100
+
+        if _n_changed_b7 > 0:
+            st.markdown(f'<div class="insight-box">Your changes touch <b>${_imp_touched_bn_b7:,.0f}B</b> of US imports (<b>{_imp_touched_pct_b7:.1f}%</b> of everything America buys abroad).</div>', unsafe_allow_html=True)
+        if _pharma_hit_b7 >= 3:
+            st.markdown(f'<div class="insight-box" style="border-left-color:#f87171">⚠️ <b>Medicine supply risk:</b> you raised tariffs on countries supplying <b>{_pharma_hit_b7:.1f}%</b> of US pharmaceutical imports — expect drug price pressure and sourcing shifts.</div>', unsafe_allow_html=True)
+
+        # ── Where does your policy rank? ────────────────────────────────────
+        st.markdown('<div class="section-header">Where does your policy rank against the real scenarios?</div>', unsafe_allow_html=True)
+        st.markdown('<div class="insight-box">The gray bars are the paper\'s full general-equilibrium scenarios. Your scenario (highlighted) is a PE estimate layered on the Liberation Day baseline — compare direction and rough size, not exact decimals.</div>', unsafe_allow_html=True)
+
+        _rank_scens_b7 = [
+            ("USTR + No Retaliation", float(_res_b7[_idus_b7, 0, 0])),
+            ("USTR + Lump-Sum Rebate", float(_res_b7[_idus_b7, 0, 7])),
+            ("Optimal Tariff", float(_res_b7[_idus_b7, 0, 3])),
+            ("USTR + Reciprocal Retaliation", float(_res_b7[_idus_b7, 0, 5])),
+            ("USTR + Optimal Retaliation", float(_res_b7[_idus_b7, 0, 4])),
+            ("Flat 15% Tariff", float(_res15_b7[_idus_b7, 0])),
+            ("⭐ YOUR SCENARIO (PE)", _nw_us_b7),
+        ]
+        _rank_df_b7 = pd.DataFrame(_rank_scens_b7, columns=["scenario", "welfare"]).sort_values("welfare")
+        _rank_colors_b7 = ["#22d3a0" if s.startswith("⭐") else ("#475569" if w < 0 else "#64748b")
+                           for s, w in zip(_rank_df_b7["scenario"], _rank_df_b7["welfare"])]
+        fig_rank_b7 = go.Figure(go.Bar(
+            x=_rank_df_b7["welfare"], y=_rank_df_b7["scenario"],
+            orientation="h", marker_color=_rank_colors_b7,
+            marker_line_color=["#ffffff" if s.startswith("⭐") else "rgba(0,0,0,0)" for s in _rank_df_b7["scenario"]],
+            marker_line_width=[2 if s.startswith("⭐") else 0 for s in _rank_df_b7["scenario"]],
+            text=[f"{v:+.2f}%" for v in _rank_df_b7["welfare"]], textposition="outside",
+        ))
+        fig_rank_b7.add_vline(x=0, line_color="#4b5563", line_width=1)
+        fig_rank_b7.update_layout(**PLOTLY_THEME, height=360,
+            title="US Welfare Under Each Policy (your scenario in green)")
+        fig_rank_b7.update_xaxes(title_text="US Welfare Change (%)")
+        st.plotly_chart(fig_rank_b7, use_container_width=True)
+
+        # ── Country-level results ───────────────────────────────────────────
+        st.markdown('<div class="section-header">Country-by-country results</div>', unsafe_allow_html=True)
+        _cb1, _cb2 = st.columns(2)
+        _names_sel_b7 = [n for n in _sel_b7]
+        with _cb1:
+            fig_cmp_b7 = go.Figure()
+            fig_cmp_b7.add_trace(go.Bar(
+                name="Liberation Day", x=_names_sel_b7,
+                y=[_lds_b7[_iso_by_name_b7[n]] for n in _names_sel_b7],
+                marker_color="#2563eb",
+                text=[f"{_lds_b7[_iso_by_name_b7[n]]}%" for n in _names_sel_b7], textposition="outside",
+            ))
+            fig_cmp_b7.add_trace(go.Bar(
+                name="Your Scenario", x=_names_sel_b7,
+                y=[_rates_b7[_iso_by_name_b7[n]] for n in _names_sel_b7],
+                marker_color=["#22d3a0" if _rates_b7[_iso_by_name_b7[n]] < _lds_b7[_iso_by_name_b7[n]]
+                              else ("#f87171" if _rates_b7[_iso_by_name_b7[n]] > _lds_b7[_iso_by_name_b7[n]] else "#64748b")
+                              for n in _names_sel_b7],
+                text=[f"{_rates_b7[_iso_by_name_b7[n]]}%" for n in _names_sel_b7], textposition="outside",
+            ))
+            fig_cmp_b7.update_layout(**PLOTLY_THEME, height=340,
+                title="Tariff Rates: Liberation Day vs Yours", barmode="group",
+                legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
+            fig_cmp_b7.update_yaxes(title_text="Tariff (%)")
+            st.plotly_chart(fig_cmp_b7, use_container_width=True)
+        with _cb2:
+            _wdel_b7 = [(r.get("country", ""), float(r.get("welfare_delta_pct") or 0))
+                        for r in _pe_ctys_b7]
+            _wdel_df_b7 = pd.DataFrame(_wdel_b7, columns=["country", "delta"]).sort_values("delta")
+            fig_wd_b7 = go.Figure(go.Bar(
+                x=_wdel_df_b7["delta"], y=_wdel_df_b7["country"],
+                orientation="h",
+                marker_color=["#ffffff" if c == "United States" else ("#22d3a0" if v > 0 else "#f87171" if v < 0 else "#64748b")
+                              for c, v in zip(_wdel_df_b7["country"], _wdel_df_b7["delta"])],
+                text=[f"{v:+.2f}pp" for v in _wdel_df_b7["delta"]], textposition="outside",
+            ))
+            fig_wd_b7.add_vline(x=0, line_color="#4b5563", line_width=1)
+            fig_wd_b7.update_layout(**PLOTLY_THEME, height=340,
+                title="Welfare Change vs Liberation Day (US in white)")
+            fig_wd_b7.update_xaxes(title_text="Welfare Δ (pp)")
+            st.plotly_chart(fig_wd_b7, use_container_width=True)
+
+        # ── World map of your scenario ──────────────────────────────────────
+        _map_iso_b7, _map_z_b7, _map_txt_b7 = [], [], []
+        for r in _pe_ctys_b7:
+            if r.get("iso3") == "USA":
+                continue
+            _map_iso_b7.append(r["iso3"])
+            _map_z_b7.append(float(r.get("welfare_delta_pct") or 0))
+            _map_txt_b7.append(r.get("country", r["iso3"]))
+        if _map_iso_b7:
+            fig_map_b7 = go.Figure()
+            fig_map_b7.add_trace(go.Choropleth(
+                locations=_cl_b7["iso3"], z=[0] * len(_cl_b7),
+                colorscale=[[0, "#1a1d2e"], [1, "#1a1d2e"]], showscale=False,
+                marker_line_color="#0f1117", marker_line_width=0.3, hoverinfo="skip",
+            ))
+            _zmax_b7 = max(abs(min(_map_z_b7)), abs(max(_map_z_b7)), 0.5)
+            fig_map_b7.add_trace(go.Choropleth(
+                locations=_map_iso_b7, z=_map_z_b7,
+                zmin=-_zmax_b7, zmax=_zmax_b7,
+                colorscale=[[0, "#f87171"], [0.5, "#fef3c7"], [1, "#22d3a0"]],
+                marker_line_color="#ffffff", marker_line_width=1,
+                colorbar=dict(title="Welfare Δ", tickfont=dict(color="#94a3b8"), bgcolor="#1a1d2e"),
+                customdata=_map_txt_b7,
+                hovertemplate="<b>%{customdata}</b><br>Welfare Δ: %{z:+.2f}pp<extra></extra>",
+            ))
+            fig_map_b7.update_layout(**PLOTLY_THEME, height=380,
+                title="Countries Touched by Your Scenario",
+                geo=dict(bgcolor="#0f1117", showframe=False, showcoastlines=True,
+                         coastlinecolor="#2d3250", showland=True, landcolor="#1a1d2e",
+                         showocean=True, oceancolor="#0f1117", projection_type="natural earth"))
+            st.plotly_chart(fig_map_b7, use_container_width=True)
+
+        # ── Results table + CSV download ────────────────────────────────────
+        _tbl_rows_b7 = []
+        for _cname7 in _sel_b7:
+            _iso7 = _iso_by_name_b7[_cname7]
+            _rec7 = next((r for r in _pe_ctys_b7 if r.get("iso3") == _iso7), {})
+            _ci7 = _idx_by_iso_b7.get(_iso7)
+            _tbl_rows_b7.append({
+                "Country": _cname7,
+                "LD Tariff (%)": _lds_b7[_iso7],
+                "Your Tariff (%)": _rates_b7[_iso7],
+                "US Imports ($B)": round(float(_imp_b7[_ci7]) / 1e6, 1) if _ci7 is not None else 0,
+                "Welfare Before (%)": round(float(_rec7.get("baseline_welfare_pct") or 0), 2),
+                "Welfare After (%)": round(float(_rec7.get("new_welfare_pct") or 0), 2),
+                "Welfare Δ (pp)": round(float(_rec7.get("welfare_delta_pct") or 0), 2),
+            })
+        _tbl_rows_b7.append({
+            "Country": "🇺🇸 United States",
+            "LD Tariff (%)": "—", "Your Tariff (%)": "—", "US Imports ($B)": "—",
+            "Welfare Before (%)": round(_bw_us_b7, 2),
+            "Welfare After (%)": round(_nw_us_b7, 2),
+            "Welfare Δ (pp)": round(_wd_us_b7, 2),
+        })
+        _tbl_b7 = pd.DataFrame(_tbl_rows_b7)
+        st.dataframe(_tbl_b7, use_container_width=True, hide_index=True)
+        st.download_button("⬇️ Download scenario as CSV",
+                           _tbl_b7.to_csv(index=False).encode("utf-8"),
+                           "my_tariff_scenario.csv", "text/csv", key="bys_dl")
+
+        # ── Plain-English verdict ───────────────────────────────────────────
+        if _n_changed_b7 > 0:
+            _chg_desc_b7 = ", ".join(
+                f"{next(n for n in _sel_b7 if _iso_by_name_b7[n] == iso)} {_lds_b7[iso]}%→{r}%"
+                for iso, r in list(_changed_b7.items())[:5])
+            if _n_changed_b7 > 5:
+                _chg_desc_b7 += f" (+{_n_changed_b7 - 5} more)"
+            _dir_us_b7 = "better off" if _wd_us_b7 > 0 else "worse off"
+            _price_b7 = "fall" if _dcpi_b7 < 0 else "rise"
+            _rev_b7 = "raises" if _drev_bn_b7 > 0 else "loses"
+            _worst_b7 = min(((r.get("country", ""), float(r.get("welfare_delta_pct") or 0))
+                             for r in _pe_ctys_b7 if r.get("iso3") != "USA"),
+                            key=lambda x: x[1], default=("", 0))
+            st.markdown(
+                f'<div class="insight-box" style="border-left-color:{"#22d3a0" if _wd_us_b7 > 0 else "#f87171"}">'
+                f'<b>💡 The verdict:</b> You changed {_chg_desc_b7}. '
+                f'America is <b>{_dir_us_b7}</b> by {abs(_wd_us_b7):.2f}pp: consumer prices {_price_b7} '
+                f'{abs(_dcpi_b7):.2f}% ({_hh_cost_b7:+,.0f} $/household/yr) and the policy {_rev_b7} '
+                f'${abs(_drev_bn_b7):,.0f}B in tariff revenue vs Liberation Day. '
+                + (f'Hardest hit abroad: <b>{_worst_b7[0]}</b> ({_worst_b7[1]:+.2f}pp). ' if _worst_b7[0] and _worst_b7[1] < 0 else '')
+                + 'Assumes no retaliation; linearised PE approximation.</div>',
+                unsafe_allow_html=True)
+
+        # ── Methodology ─────────────────────────────────────────────────────
+        with st.expander("🔬 How is this calculated?"):
+            st.markdown("""
+- **Welfare**: linearised partial-equilibrium approximation on top of the Liberation Day GE baseline —
+  `Δwelfare ≈ Δτ × import_share × (−ε / (1 + τ_LD))` with trade elasticity **ε = 4** (from `run_tariff_scenario` in the MCP server).
+- **Consumer prices**: `ΔCPI ≈ Σ (import_share × Δτ) × passthrough`, using the **29.7%** consumer passthrough estimated in the retail analysis (`sector_retail_results.npz`). Household cost divides the total by 132M US households.
+- **Tariff revenue**: demand-adjusted — imports shrink when taxed: `M(τ) = M₂₀₂₃ × ((1+τ)/(1+τ_LD))^(−ε)`, revenue = `τ × M(τ)`, summed over all countries and compared with the same formula at Liberation Day rates.
+- **What this misses**: general-equilibrium feedback (wages, exchange rates), foreign retaliation, supply-chain IO amplification, and product-level substitution. Use the AI Analyst tab to run questions against the full model outputs.
+            """)
 
 
