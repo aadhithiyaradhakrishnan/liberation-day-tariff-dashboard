@@ -10,6 +10,9 @@ This document lists the main data files and folders in `data/` and their purpose
 | **us_tariff_schedule_2025_hts8.csv** | U.S. tariff schedule at HTS8 level (2025); MFN and partner-specific rates; used for sector-level tariff shocks. |
 | **retail_prices_illustrative.csv** | Illustrative product-level “before/after tariff” prices for retail; used for simple examples only. |
 | **daily_price_indices_cavallo_etal.csv** | Daily price indices (Cavallo et al.–style) for US, Canada, Mexico, China; retail/consumer price evidence. |
+| **BEA_Gross_Output_by_Industry_latest.xlsx** | BEA quarterly gross output by industry, 2024 Q1–2026 Q1, seasonally adjusted annual rates in billions of current dollars; revised June 25, 2026. |
+| **USITC_Mfg_Imports_Monthly_2022_2025.xlsx** | USITC DataWeb monthly imports for consumption and calculated duties for HTS chapters 39, 72, 73, 84, 85, 87, 94, and 95, with chapters reported separately for 2022–2025. |
+| **BLS_Retail_CPI_Monthly_2022_2026.json** | Official BLS Public Data API response for 10 monthly CPI series covering retail goods and comparison categories, January 2022–May 2026; raw observed-price data for external retail validation. |
 | **ICIO_small_ReadMe.xlsx** | OECD ICIO “small” documentation (RowItems, ColItems, sector/country codes). |
 | **OECD_ICIO_SML_2016_2022/** | OECD ICIO small symmetrical tables by year (e.g., 2018_SML.csv); global IO matrices for supply-chain calibration. |
 | **WIOD_WIOT_Excel/** | WIOD world input–output tables in Excel (2000–2014); optional robustness / historical context. |

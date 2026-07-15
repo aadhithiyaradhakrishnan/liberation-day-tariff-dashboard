@@ -240,6 +240,42 @@ def load_tariffs():
     return df.sort_values("tariff_pct", ascending=False).reset_index(drop=True)
 
 @st.cache_data
+def load_bls_cpi():
+    """Official BLS CPI series (monthly, 2022 - May 2026): headline + tariff-exposed
+    goods categories + domestic services controls. Oct 2025 missing (govt shutdown)."""
+    import json
+    with open(os.path.join(DATA, "BLS_Retail_CPI_Monthly_2022_2026.json"), encoding="utf-8") as f:
+        raw = json.load(f)
+    names = {
+        "CUSR0000SA0":    ("All items (headline CPI)", "headline"),
+        "CUSR0000SAF11":  ("Food at home",             "exposed"),
+        "CUSR0000SAA":    ("Apparel",                  "exposed"),
+        "CUSR0000SAH3":   ("Household furnishings",    "exposed"),
+        "CUSR0000SETA01": ("New vehicles",             "exposed"),
+        "CUSR0000SETA02": ("Used cars & trucks",       "exposed"),
+        "CUSR0000SEEE01": ("Computers & peripherals",  "exposed"),
+        "CUSR0000SERA02": ("Cable & streaming TV",     "service"),
+        "CUSR0000SAM2":   ("Medical care services",    "service"),
+        "CUSR0000SAS4":   ("Transportation services",  "service"),
+    }
+    rows = []
+    for s in raw["Results"]["series"]:
+        sid = s["seriesID"]
+        if sid not in names:
+            continue
+        for p in s["data"]:
+            if p["value"] == "-":
+                continue  # Oct 2025 shutdown gap
+            rows.append({
+                "sid": sid,
+                "name": names[sid][0],
+                "group": names[sid][1],
+                "date": pd.Timestamp(int(p["year"]), int(p["period"][1:]), 1),
+                "value": float(p["value"]),
+            })
+    return pd.DataFrame(rows).sort_values(["sid", "date"]).reset_index(drop=True)
+
+@st.cache_data
 def load_mfg_reality():
     """Post-Liberation Day reality check data:
     - USITC monthly imports + calculated duties by HTS chapter, 2022-2025
@@ -1414,6 +1450,116 @@ with tab3:
             + (f' {cp["country"]} appears in the daily price tracker chart — look for it in the line chart below.' if _in_cavallo else '') +
             f'</div>'
             f'</div>', unsafe_allow_html=True)
+
+    # ── Official BLS consumer prices after Liberation Day ────────────────────
+    st.markdown('<div class="section-header">⚡ What happened to consumer prices — official BLS data through May 2026</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">The cleanest test of whether tariffs raised prices: compare <b>tariff-exposed goods</b> (apparel, furniture, computers — things America imports) against <b>domestic services</b> (medical care, transportation — things that never cross a border). After Liberation Day the exposed categories accelerated sharply while services cooled. Computers had been getting <i>cheaper</i> for years (−3.4%/yr) and flipped to <i>inflating</i> (+2.8%/yr) — a textbook tariff signature. <span style="color:#64748b">(Oct 2025 missing — government shutdown paused BLS data collection.)</span></div>', unsafe_allow_html=True)
+
+    _bls = load_bls_cpi()
+    _LD_TS_R = pd.Timestamp("2025-03-01")   # last pre-tariff reading
+    _PRE_TS_R = pd.Timestamp("2023-01-01")
+    _latest_ts_r = _bls["date"].max()
+
+    # Pre vs post annualized inflation per category
+    _accel_rows_r = []
+    for _sid_r in _bls["sid"].unique():
+        _s_r = _bls[_bls["sid"] == _sid_r].set_index("date")["value"]
+        if _PRE_TS_R in _s_r.index and _LD_TS_R in _s_r.index and _latest_ts_r in _s_r.index:
+            _m_pre = (_LD_TS_R.year - _PRE_TS_R.year) * 12 + (_LD_TS_R.month - _PRE_TS_R.month)
+            _m_post = (_latest_ts_r.year - _LD_TS_R.year) * 12 + (_latest_ts_r.month - _LD_TS_R.month)
+            _pre_ann = ((_s_r[_LD_TS_R] / _s_r[_PRE_TS_R]) ** (12 / _m_pre) - 1) * 100
+            _post_ann = ((_s_r[_latest_ts_r] / _s_r[_LD_TS_R]) ** (12 / _m_post) - 1) * 100
+            _row0_r = _bls[_bls["sid"] == _sid_r].iloc[0]
+            _accel_rows_r.append({"name": _row0_r["name"], "group": _row0_r["group"],
+                                  "pre": _pre_ann, "post": _post_ann, "accel": _post_ann - _pre_ann})
+    _accel_df_r = pd.DataFrame(_accel_rows_r)
+
+    _head_r = _accel_df_r[_accel_df_r["group"] == "headline"].iloc[0]
+    _comp_r = _accel_df_r[_accel_df_r["name"] == "Computers & peripherals"].iloc[0]
+    _app_r  = _accel_df_r[_accel_df_r["name"] == "Apparel"].iloc[0]
+    _svc_acc_r = _accel_df_r[_accel_df_r["group"] == "service"]["accel"].mean()
+
+    _bk1, _bk2, _bk3, _bk4 = st.columns(4)
+    with _bk1:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Headline inflation</div>
+          <div class="kpi-value negative" style="font-size:24px">{_head_r["pre"]:.1f}% → {_head_r["post"]:.1f}%</div>
+          <div class="kpi-sub">annualized, before → after Liberation Day</div>
+        </div>""", unsafe_allow_html=True)
+    with _bk2:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Computers flipped to inflating</div>
+          <div class="kpi-value negative" style="font-size:24px">{_comp_r["accel"]:+.1f}pp</div>
+          <div class="kpi-sub">{_comp_r["pre"]:+.1f}%/yr before → {_comp_r["post"]:+.1f}%/yr after</div>
+        </div>""", unsafe_allow_html=True)
+    with _bk3:
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Apparel acceleration</div>
+          <div class="kpi-value negative" style="font-size:24px">{_app_r["accel"]:+.1f}pp</div>
+          <div class="kpi-sub">{_app_r["pre"]:+.1f}%/yr before → {_app_r["post"]:+.1f}%/yr after</div>
+        </div>""", unsafe_allow_html=True)
+    with _bk4:
+        _svc_cls_r = "positive" if _svc_acc_r < 0 else "warning"
+        st.markdown(f"""<div class="kpi-card">
+          <div class="kpi-label">Domestic services (control group)</div>
+          <div class="kpi-value {_svc_cls_r}" style="font-size:24px">{_svc_acc_r:+.1f}pp</div>
+          <div class="kpi-sub">services cooled — the rise is goods-specific</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("")
+    _bc1_r, _bc2_r = st.columns(2)
+    with _bc1_r:
+        # Indexed lines, Mar 2025 = 100
+        _GROUP_STYLE_R = {"headline": ("#e2e8f0", 3.0), "exposed": ("#f87171", 1.8), "service": ("#38bdf8", 1.8)}
+        _EXPOSED_COLORS_R = ["#f87171", "#fb923c", "#fbbf24", "#f472b6", "#a78bfa", "#fca5a5"]
+        _SERVICE_COLORS_R = ["#38bdf8", "#22d3a0", "#60a5fa"]
+        fig_bls = go.Figure()
+        _ei_r, _si_r = 0, 0
+        for _sid_r in _bls["sid"].unique():
+            _sub_r = _bls[_bls["sid"] == _sid_r].sort_values("date")
+            _sub_r = _sub_r[_sub_r["date"] >= pd.Timestamp("2024-01-01")]
+            _s_idx = _sub_r.set_index("date")["value"]
+            if _LD_TS_R not in _s_idx.index:
+                continue
+            _grp_r = _sub_r["group"].iloc[0]
+            if _grp_r == "headline":
+                _clr_r, _w_r = "#e2e8f0", 3.0
+            elif _grp_r == "exposed":
+                _clr_r, _w_r = _EXPOSED_COLORS_R[_ei_r % len(_EXPOSED_COLORS_R)], 1.6
+                _ei_r += 1
+            else:
+                _clr_r, _w_r = _SERVICE_COLORS_R[_si_r % len(_SERVICE_COLORS_R)], 1.6
+                _si_r += 1
+            fig_bls.add_trace(go.Scatter(
+                x=_sub_r["date"], y=_sub_r["value"] / _s_idx[_LD_TS_R] * 100,
+                name=_sub_r["name"].iloc[0],
+                line=dict(color=_clr_r, width=_w_r,
+                          dash="dot" if _grp_r == "service" else "solid"),
+            ))
+        fig_bls.add_vline(x="2025-04-02", line_dash="dash", line_color="#f87171",
+            annotation_text="Liberation Day", annotation_position="top left",
+            annotation_font_color="#f87171")
+        fig_bls.update_layout(**PLOTLY_THEME, height=420,
+            title="Official CPI by Category (Mar 2025 = 100; dotted = services)",
+            legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=9)))
+        fig_bls.update_yaxes(title_text="Index (Mar 2025 = 100)")
+        st.plotly_chart(fig_bls, use_container_width=True)
+    with _bc2_r:
+        # Acceleration diverging bar
+        _acc_plot_r = _accel_df_r[_accel_df_r["group"] != "headline"].sort_values("accel")
+        fig_acc = go.Figure(go.Bar(
+            x=_acc_plot_r["accel"], y=_acc_plot_r["name"],
+            orientation="h",
+            marker_color=["#f87171" if g == "exposed" else "#38bdf8" for g in _acc_plot_r["group"]],
+            text=[f"{v:+.1f}pp" for v in _acc_plot_r["accel"]], textposition="outside",
+        ))
+        fig_acc.add_vline(x=0, line_color="#4b5563", line_width=1)
+        fig_acc.update_layout(**PLOTLY_THEME, height=420,
+            title="Inflation Acceleration After Liberation Day (red = tariff-exposed, blue = services)")
+        fig_acc.update_xaxes(title_text="Change in annualized inflation (pp)", range=[-7, 8])
+        st.plotly_chart(fig_acc, use_container_width=True)
+
+    st.markdown('<div class="insight-box"><b>Reading the evidence:</b> if the post-2025 inflation were just general macro pressure, goods and services would accelerate together. Instead, the acceleration is concentrated in import-heavy categories — computers (+6.1pp swing), apparel (+3.0pp), household furnishings (+3.0pp) — while transportation services (−4.0pp) and cable TV (−2.0pp) cooled. Vehicles are the exception: new-car prices stayed flat as dealers absorbed costs and worked through pre-tariff inventory, and used cars kept deflating. This pattern matches the retail model\'s core claim: tariff costs pass through to exactly the goods that cross borders, at roughly the 30% passthrough rate estimated above.</div>', unsafe_allow_html=True)
 
     # ── How did prices actually change? ─────────────────────────────────────
     st.markdown('<div class="section-header">How did prices actually change?</div>', unsafe_allow_html=True)
