@@ -1596,49 +1596,48 @@ with tab4:
           <div class="kpi-sub">BEA nominal output, 2025Q1 → 2026Q1</div>
         </div>""", unsafe_allow_html=True)
 
-    # ── #1 Monthly manufacturing imports around Liberation Day ───────────────
-    st.markdown('<div class="section-header">Monthly manufacturing imports around Liberation Day</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box">Importers front-ran the tariffs with a surge in early 2025, then volumes split: tariff-heavy steel and vehicles fell, while machinery kept climbing on the data-center boom. Bold white line = all eight product categories combined.</div>', unsafe_allow_html=True)
+    # ── #1 Manufacturing imports, year by year ───────────────────────────────
+    st.markdown('<div class="section-header">Manufacturing imports, year by year</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">Annual US manufacturing imports, with 2025 as the tariff year. The total barely moved, but the mix underneath changed: machinery kept growing on data-center demand, while tariff-heavy vehicles and steel shrank.</div>', unsafe_allow_html=True)
 
-    _mi_groups = {
-        "Total (8 products)": None,
-        "Machinery": [84],
-        "Electronics": [85],
-        "Vehicles": [87],
-        "Steel (both chapters)": [72, 73],
-    }
-    _mi_styles = {
-        "Total (8 products)": ("#e2e8f0", 3.2),
-        "Machinery": ("#22d3a0", 1.8),
-        "Electronics": ("#a78bfa", 1.8),
-        "Vehicles": ("#fbbf24", 1.8),
-        "Steel (both chapters)": ("#f87171", 1.8),
-    }
+    _yr_groups = [
+        ("Machinery", [84], "#22d3a0"),
+        ("Electronics", [85], "#a78bfa"),
+        ("Vehicles", [87], "#fbbf24"),
+        ("Steel", [72, 73], "#f87171"),
+        ("Other (plastics, furniture, toys)", [39, 94, 95], "#475569"),
+    ]
+    _imp_yr = _imp_rl.copy()
+    _imp_yr["year"] = _imp_yr["date"].dt.year
+    _years_b4 = sorted(_imp_yr["year"].unique())
+
     fig_mi = go.Figure()
-    for _gname, _chs in _mi_groups.items():
-        if _chs is None:
-            _g = _imp_rl.groupby("date")["value"].sum().reset_index()
-        else:
-            _g = _imp_rl[_imp_rl["chapter"].isin(_chs)].groupby("date")["value"].sum().reset_index()
-        _g = _g.sort_values("date")
-        _clr, _w = _mi_styles[_gname]
+    _totals_yr = [_imp_yr[_imp_yr["year"] == y]["value"].sum() / 1e9 for y in _years_b4]
+    fig_mi.add_trace(go.Scatter(
+        name="Total (8 products)", x=[str(y) for y in _years_b4], y=_totals_yr,
+        line=dict(color="#e2e8f0", width=3.5), mode="lines+markers+text",
+        text=[f"${v:,.0f}B" for v in _totals_yr], textposition="top center",
+        textfont=dict(color="#e2e8f0", size=12),
+    ))
+    for _gname, _chs, _clr in _yr_groups:
+        _vals = [_imp_yr[(_imp_yr["year"] == y) & (_imp_yr["chapter"].isin(_chs))]["value"].sum() / 1e9
+                 for y in _years_b4]
         fig_mi.add_trace(go.Scatter(
-            x=_g["date"], y=_g["value"] / 1e9, name=_gname,
-            line=dict(color=_clr, width=_w), showlegend=False,
+            name=_gname, x=[str(y) for y in _years_b4], y=_vals,
+            line=dict(color=_clr, width=2), mode="lines+markers+text",
+            text=[f"{v:,.0f}" for v in _vals], textposition="top center",
+            textfont=dict(color=_clr, size=10),
         ))
-        fig_mi.add_annotation(
-            x=_g["date"].iloc[-1], y=float(_g["value"].iloc[-1]) / 1e9,
-            text=_gname, showarrow=False, xanchor="left", xshift=6,
-            font=dict(color=_clr, size=11))
-    fig_mi.add_vline(x="2025-04-02", line_dash="dash", line_color="#f87171",
-        annotation_text="Liberation Day", annotation_position="top left",
+    fig_mi.add_vline(x=2.75, line_dash="dash", line_color="#f87171",
+        annotation_text="Liberation Day (Apr 2025)", annotation_position="top left",
         annotation_font_color="#f87171")
-    fig_mi.update_layout(**PLOTLY_THEME, height=400,
-        title="US Manufacturing Imports, Monthly ($B, USITC customs value)")
-    fig_mi.update_xaxes(range=["2024-01-01", "2026-04-01"])
-    fig_mi.update_yaxes(title_text="Imports ($B/month)")
+    fig_mi.update_layout(**PLOTLY_THEME, height=420,
+        title="US Manufacturing Imports by Year ($B, USITC customs value; 2025 = tariff year)",
+        legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250"))
+    fig_mi.update_xaxes(type="category")
+    fig_mi.update_yaxes(title_text="Imports ($B/year)")
     st.plotly_chart(fig_mi, use_container_width=True)
-    _explain("Follow the white total line: a spike right before the red Liberation Day marker (importers rushing goods in ahead of the tariffs), then a dip. The four product lines show who drove it - machinery (green) kept rising, steel (red) and vehicles (yellow) fell.")
+    _explain("The white line is total manufacturing imports per year, with the product groups below it. Compare 2025 with 2024: the total held steady, yet machinery (green) kept climbing while vehicles (yellow) and steel (red) declined. The tariffs reshaped what America buys more than how much.")
 
     # ── #2 The tariff rate factories actually paid ──────────────────────────
     st.markdown('<div class="section-header">The tariff rate factories actually paid</div>', unsafe_allow_html=True)
@@ -1721,6 +1720,35 @@ with tab4:
     st.plotly_chart(fig_er4, use_container_width=True)
     _explain("Gray = the duty rate each product category actually carried before Liberation Day, red = after. Steel articles and toys saw the steepest jumps; vehicles and furniture also multiplied. Rates are USITC calculated duties over customs value for the same nine months of each year, so they reflect every exemption, carve-out and trade measure actually in force - not the headline announcement.")
 
+    # ── How tariff costs travel through supply chains to consumer prices ────
+    st.markdown('<div class="section-header">How tariff costs travel through supply chains to reach consumer prices</div>', unsafe_allow_html=True)
+    st.markdown('<div class="insight-box">A tariff does not stop at the port. A factory pays more for imported steel directly, and then pays more again for every part made with that steel. The model captures this with a supply chain multiplier of <b>1.09</b>, and the result is striking: manufacturing alone accounts for <b>6.8 points of the 7.1 point</b> rise in consumer prices. In other words, the supply chain is the main road tariff costs take on their way to shoppers.</div>', unsafe_allow_html=True)
+
+    _amp_stages = [
+        "Direct tariff on<br>factory imports",
+        f"After supply chain<br>amplification (×{mfg_stats['io_mult_mfg']:.2f})",
+        "Manufacturing share of the<br>total consumer price rise",
+    ]
+    _amp_vals = [
+        mfg_stats["tau_mfg_avg"] * 100,
+        mfg_stats["tau_mfg_avg"] * 100 * mfg_stats["io_mult_mfg"],
+        mfg_stats["cpi_mfg_contribution"],
+    ]
+    _amp_notes = [
+        f"{_amp_vals[0]:.1f}%",
+        f"{_amp_vals[1]:.1f}%",
+        f"{_amp_vals[2]:.1f}pp of 7.1pp",
+    ]
+    fig_amp = go.Figure(go.Bar(
+        x=_amp_stages, y=_amp_vals,
+        marker_color=["#2563eb", "#fbbf24", "#f87171"],
+        text=_amp_notes, textposition="outside",
+    ))
+    fig_amp.update_layout(**PLOTLY_THEME, height=340,
+        title="From the Port to the Checkout: How the Tariff Cost Builds")
+    fig_amp.update_yaxes(title_text="% impact")
+    st.plotly_chart(fig_amp, use_container_width=True)
+    _explain("Read the bars left to right. The first is the average tariff factories pay on imported inputs. The second adds the ripple effect through supply chains, since parts made with tariffed materials also cost more. The third shows where it ends up: manufacturing supplies nearly all of the total rise in consumer prices, about 96 percent of it.")
 
     # ── #5 Nominal US factory output after Liberation Day ───────────────────
     st.markdown('<div class="section-header">Nominal US factory output after Liberation Day</div>', unsafe_allow_html=True)
