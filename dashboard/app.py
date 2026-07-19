@@ -450,7 +450,7 @@ with st.sidebar:
                     f'</div>'
                     f'</div>', unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["🌐 Macro Overview", "💊 Pharma Supply Chain", "🛒 Retail & Consumer Prices", "🏭 Manufacturing Exposure", "🤖 AI Analyst", "🔌 MCP Analyst", "🎛️ Build Your Scenario"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Macro Overview", "Pharma Supply Chain", "Retail & Consumer Prices", "Manufacturing Exposure", "AI Analyst", "MCP Analyst", "Build Your Scenario"])
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — MACRO OVERVIEW
@@ -768,7 +768,7 @@ with tab1:
     _explain("Green countries gained economically, red countries lost. Hover over any country for its exact welfare change. The scenario selector above changes which policy world you are looking at - retaliation scenarios turn much more of the map red.")
 
     # ── Top 20 winners / losers ────────────────────────────────────────────
-    st.markdown('<div class="section-header">Biggest Winners and Biggest Losers</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Largest Welfare Gains and Losses by Country</div>', unsafe_allow_html=True)
     st.markdown('<div class="insight-box">Small open economies that trade heavily with the US face the largest losses. Countries that compete with US exports in third markets may actually gain.</div>', unsafe_allow_html=True)
     c3, c4 = st.columns(2)
 
@@ -791,7 +791,7 @@ with tab1:
             text=[f"◀ {v:.2f}%" if (_hl_name and n == _hl_name) else f"{v:.2f}%" for v, n in zip(losers["welfare"], losers["CountryName"])],
             textposition="outside",
         ))
-        _loser_title = f"Top 20 Biggest Losers — {_hl_name} highlighted" if _hl_name else "Top 20 Biggest Losers"
+        _loser_title = f"20 Largest Welfare Declines — {_hl_name} highlighted" if _hl_name else "20 Largest Welfare Declines"
         fig_l.update_layout(**PLOTLY_THEME, height=480, title=_loser_title, xaxis_title="Welfare Change %")
         st.plotly_chart(fig_l, use_container_width=True)
         _explain("The 20 countries whose economies shrank the most. They are almost all small, open economies that send a large share of their exports to the US - when the tariff wall went up, they had nowhere else to sell.")
@@ -812,7 +812,7 @@ with tab1:
             text=[f"◀ {v:.2f}%" if (_hl_name and n == _hl_name) else f"{v:.2f}%" for v, n in zip(winners["welfare"], winners["CountryName"])],
             textposition="outside",
         ))
-        _winner_title = f"Top 20 Biggest Winners — {_hl_name} highlighted" if _hl_name else "Top 20 Biggest Winners"
+        _winner_title = f"20 Largest Welfare Gains — {_hl_name} highlighted" if _hl_name else "20 Largest Welfare Gains"
         fig_w.update_layout(**PLOTLY_THEME, height=480, title=_winner_title, xaxis_title="Welfare Change %")
         st.plotly_chart(fig_w, use_container_width=True)
         _explain("The 20 countries that actually gained. Most had little direct US trade to lose, and picked up business as buyers rerouted orders away from tariffed suppliers like China and Vietnam.")
@@ -883,7 +883,7 @@ with tab1:
     st.markdown(
         f'<div style="background:linear-gradient(135deg,#0d1a2e,#1a1d2e);border:1px solid #2563eb;border-radius:12px;padding:20px 24px;margin-bottom:10px">'
         f'<div style="color:#e2e8f0;font-size:17px;font-weight:700;margin-bottom:6px">Think you could design a better tariff policy?</div>'
-        f'<div style="color:#94a3b8;font-size:13px">Open the <b style="color:#60a5fa">🎛️ Build Your Scenario</b> tab to set your own rates for any of the 194 countries — and get a live verdict on wellbeing, prices, revenue and who gets hurt. Or pick a country in the sidebar\'s <b style="color:#60a5fa">🔍 Country Explorer</b> to see this whole page through that country\'s eyes.</div>'
+        f'<div style="color:#94a3b8;font-size:13px">Open the <b style="color:#60a5fa">Build Your Scenario</b> tab to set your own rates for any of the 194 countries — and get a live verdict on wellbeing, prices, revenue and who gets hurt. Or pick a country in the sidebar\'s <b style="color:#60a5fa">Country Explorer</b> to see this whole page through that country\'s eyes.</div>'
         f'</div>', unsafe_allow_html=True)
 
     # ── Country Deep Dive — PE scenario chart + global rank ───────────────────
@@ -1750,40 +1750,6 @@ with tab4:
     st.plotly_chart(fig_amp, use_container_width=True)
     _explain("Read the bars left to right. The first is the average tariff factories pay on imported inputs. The second adds the ripple effect through supply chains, since parts made with tariffed materials also cost more. The third shows where it ends up: manufacturing supplies nearly all of the total rise in consumer prices, about 96 percent of it.")
 
-    # ── #5 Nominal US factory output after Liberation Day ───────────────────
-    st.markdown('<div class="section-header">Nominal US factory output after Liberation Day</div>', unsafe_allow_html=True)
-    st.markdown('<div class="insight-box"><b>Nominal</b> BEA output indexed to Q1 2025 = 100 — the index combines changes in production volume AND tariff-driven price increases, so growth here is not proof of a production boom. Primary metals (steel) rose most, consistent with tariff protection; motor vehicles dipped in late 2025.</div>', unsafe_allow_html=True)
-
-    _bea_keys_rl = ["Manufacturing", "Primary metals", "Motor vehicles, bodies and trailers, and parts",
-                    "Machinery", "Computer and electronic products", "Chemical products"]
-    _bea_labels_rl = {"Manufacturing": "All Manufacturing", "Primary metals": "Primary Metals (steel)",
-                      "Motor vehicles, bodies and trailers, and parts": "Motor Vehicles",
-                      "Machinery": "Machinery", "Computer and electronic products": "Computers & Electronics",
-                      "Chemical products": "Chemicals"}
-    _qtrs_rl = ["2024Q1","2024Q2","2024Q3","2024Q4","2025Q1","2025Q2","2025Q3","2025Q4","2026Q1"]
-    fig_bea_rl = go.Figure()
-    _colors_bea_rl = ["#e2e8f0","#f87171","#fbbf24","#22d3a0","#a78bfa","#38bdf8"]
-    for _i_rl, _k_rl in enumerate(_bea_keys_rl):
-        _row_rl = _bea_rl[_bea_rl["industry"] == _k_rl]
-        if _row_rl.empty:
-            continue
-        _base_rl = float(_row_rl["2025Q1"].iloc[0])
-        _vals_rl = [float(_row_rl[q].iloc[0]) / _base_rl * 100 for q in _qtrs_rl]
-        fig_bea_rl.add_trace(go.Scatter(
-            x=_qtrs_rl, y=_vals_rl, name=_bea_labels_rl[_k_rl],
-            line=dict(color=_colors_bea_rl[_i_rl % len(_colors_bea_rl)],
-                      width=3 if _k_rl == "Manufacturing" else 1.6),
-        ))
-    fig_bea_rl.add_vline(x=4.5, line_dash="dash", line_color="#f87171",
-        annotation_text="Liberation Day", annotation_position="top left",
-        annotation_font_color="#f87171")
-    fig_bea_rl.update_layout(**PLOTLY_THEME, height=380,
-        title="Nominal Factory Output by Industry (BEA quarterly, 2025Q1 = 100)",
-        legend=dict(bgcolor="#1a1d2e", bordercolor="#2d3250", font=dict(size=10)))
-    fig_bea_rl.update_yaxes(title_text="Index (2025Q1 = 100)")
-    st.plotly_chart(fig_bea_rl, use_container_width=True)
-    _explain("US factory output by industry in nominal dollars, indexed so Q1 2025 = 100. Lines above 100 grew after the tariffs - but remember part of that growth is higher prices, not more production. Steel (red) benefited most from protection; motor vehicles (yellow) dipped in late 2025.")
-
     # ── Sector verdict ───────────────────────────────────────────────────────
     st.markdown(
         '<div style="background:linear-gradient(135deg,#141824,#1a1d2e);border:2px solid #fbbf24;border-radius:12px;padding:22px 26px;margin-top:30px">'
@@ -1844,6 +1810,8 @@ with tab5:
         get_pharma_supplier_risk,
         get_quintile_burden,
         get_manufacturing_shock,
+        get_manufacturing_reality,
+        get_retail_price_reality,
         run_tariff_scenario,
     )
 
@@ -1884,7 +1852,7 @@ with tab5:
         },
         {
             "name": "get_quintile_burden",
-            "description": "Return tariff incidence by income quintile from pharma + retail incidence data.",
+            "description": "Tariff incidence by income quintile. Omit category for pharma burden; pass category='retail' for the retail GE quintile incidence.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -1900,6 +1868,26 @@ with tab5:
                 "properties": {
                     "naics_code": {"type": "string",  "description": "NAICS code prefix e.g. '3364'. Omit for top sectors."},
                     "top_n":      {"type": "integer", "description": "Number of top sectors (default 10, max 50)."},
+                },
+            },
+        },
+        {
+            "name": "get_manufacturing_reality",
+            "description": "MEASURED post-Liberation Day manufacturing outcomes from USITC customs and BEA output: per-product import changes, effective duty rates actually paid, duties collected, factory output. Use this for what actually happened (vs model predictions).",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "chapter": {"type": "integer", "description": "HTS chapter for a monthly series: 39, 72, 73, 84, 85, 87, 94, 95. Omit for the cross-product summary."},
+                },
+            },
+        },
+        {
+            "name": "get_retail_price_reality",
+            "description": "MEASURED official BLS consumer price outcomes after Liberation Day: per-category price change since Mar 2025 and inflation acceleration vs pre-tariff trend (tariff-exposed goods vs domestic services).",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "series_name": {"type": "string", "description": "Category filter, e.g. 'Apparel' or 'Computers'. Omit for all categories."},
                 },
             },
         },
@@ -1923,6 +1911,8 @@ with tab5:
         "get_pharma_supplier_risk": get_pharma_supplier_risk,
         "get_quintile_burden":     get_quintile_burden,
         "get_manufacturing_shock": get_manufacturing_shock,
+        "get_manufacturing_reality": get_manufacturing_reality,
+        "get_retail_price_reality": get_retail_price_reality,
         "run_tariff_scenario":     run_tariff_scenario,
     }
 
@@ -2589,7 +2579,7 @@ with tab7:
             text=[f"{v:+.2f}%" for v in _wl7["welfare"]], textposition="outside"))
         fig_wl7.add_vline(x=0, line_color="#4b5563", line_width=1)
         fig_wl7.update_layout(**PLOTLY_THEME, height=380,
-            title="Top 10 losers & winners under your policy")
+            title="Largest welfare declines and gains under your policy")
         fig_wl7.update_yaxes(autorange="reversed", tickfont=dict(size=10))
         st.plotly_chart(fig_wl7, use_container_width=True)
         _explain("The extremes of your policy: the ten hardest-hit and ten biggest-gaining economies, from the GE solution.")
