@@ -25,7 +25,7 @@ st.set_page_config(
     page_title="Liberation Day Tariff Dashboard",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Global CSS ────────────────────────────────────────────────────────────────
@@ -371,86 +371,7 @@ _g_tariff_df = load_tariffs()
 _country_profile = None
 _sb_live         = None   # single CE scenario result — computed once in sidebar, reused in Tab 1
 
-with st.sidebar:
-    st.markdown("### 🔍 Country Explorer")
-    st.markdown('<div style="font-size:12px;color:#64748b;margin-bottom:10px">Select any country to see its Liberation Day tariff stats and build a custom scenario.</div>', unsafe_allow_html=True)
-
-    _country_options = ["(Select a country)"] + sorted(_g_cl["CountryName"].tolist())
-    _sel_country = st.selectbox("Country", _country_options, key="country_explorer", label_visibility="collapsed")
-
-    if _sel_country != "(Select a country)":
-        _crow = _g_cl[_g_cl["CountryName"] == _sel_country]
-        if not _crow.empty:
-            _cidx    = int(_crow.index[0])
-            _ciso3   = str(_crow["iso3"].iloc[0])
-            _ct_row  = _g_tariff_df[_g_tariff_df["CountryName"] == _sel_country]
-            _ctariff = float(_ct_row["tariff_pct"].iloc[0]) if not _ct_row.empty else 0.0
-
-            # GE model stats — USTR no retaliation (scenario 0)
-            _c_welfare = float(_g_results[_cidx, 0, 0])
-            _c_cpi     = float(_g_results[_cidx, 5, 0])
-            _c_imp     = float(_g_results[_cidx, 3, 0])
-            _c_exp     = float(_g_results[_cidx, 2, 0])
-            _c_emp     = float(_g_results[_cidx, 4, 0])
-
-            st.markdown(f'<div style="background:#1a1d2e;border:1px solid #2d3250;border-radius:8px;padding:12px;margin-bottom:10px">'
-                f'<div style="color:#94a3b8;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px">{_sel_country.upper()}</div>'
-                f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
-                f'<div><div style="color:#64748b;font-size:10px">Applied Tariff</div><div style="color:#f87171;font-size:18px;font-weight:700">{_ctariff:.0f}%</div></div>'
-                f'<div><div style="color:#64748b;font-size:10px">Welfare Change</div><div style="color:{"#22d3a0" if _c_welfare>0 else "#f87171"};font-size:18px;font-weight:700">{_c_welfare:+.2f}%</div></div>'
-                f'<div><div style="color:#64748b;font-size:10px">Price Change</div><div style="color:#fbbf24;font-size:16px;font-weight:600">{_c_cpi:+.1f}%</div></div>'
-                f'<div><div style="color:#64748b;font-size:10px">Import Vol.</div><div style="color:#60a5fa;font-size:16px;font-weight:600">{_c_imp:+.1f}%</div></div>'
-                f'<div><div style="color:#64748b;font-size:10px">Export Vol.</div><div style="color:#60a5fa;font-size:16px;font-weight:600">{_c_exp:+.1f}%</div></div>'
-                f'<div><div style="color:#64748b;font-size:10px">Employment</div><div style="color:{"#22d3a0" if _c_emp>0 else "#f87171"};font-size:16px;font-weight:600">{_c_emp:+.2f}%</div></div>'
-                f'</div></div>', unsafe_allow_html=True)
-
-            st.markdown("**What if we change the tariff?**")
-            # Reset flag must be checked before slider is instantiated
-            if st.session_state.pop("_reset_ce", False):
-                st.session_state["ce_scenario_slider"] = int(_ctariff)
-            _c_scenario_rate = st.slider(
-                f"New tariff for {_sel_country}", 0, 100, int(_ctariff), 1, format="%d%%",
-                key="ce_scenario_slider"
-            )
-            if st.button("↺ Reset to Liberation Day tariff", use_container_width=True, key="ce_reset"):
-                st.session_state["_reset_ce"] = True
-                st.rerun()
-
-            _country_profile = {
-                "country": _sel_country, "iso3": _ciso3, "idx": _cidx,
-                "tariff": _ctariff, "scenario_rate": _c_scenario_rate,
-                "welfare": _c_welfare, "cpi": _c_cpi,
-                "imp": _c_imp, "exp": _c_exp, "emp": _c_emp,
-            }
-
-            # ── Inline live result right below the slider ──────────────────
-            if _c_scenario_rate != int(_ctariff):
-                _sb_frozen = ((_ciso3, _c_scenario_rate),)
-                _sb_live   = _compute_custom_scenario(_sb_frozen)  # also used in Tab 1
-                _sb_ctries = _sb_live.get("data", {}).get("countries", [])
-                _sb_us     = next((r for r in _sb_ctries if r.get("iso3") == "USA"), {})
-                _sb_wd     = _sb_us.get("welfare_delta_pct") or 0
-                _sb_nw     = _sb_us.get("new_welfare_pct") or 0
-                _sb_bw     = _sb_us.get("baseline_welfare_pct") or 0
-                _sb_dpp    = _c_scenario_rate - int(_ctariff)
-                _sb_clr    = "#22d3a0" if _sb_wd > 0 else "#f87171"
-                _sb_dir    = "cut" if _sb_dpp < 0 else "raised"
-                _sb_effect = "better off" if _sb_wd > 0 else "worse off"
-                st.markdown(
-                    f'<div style="background:#0f172a;border:1px solid {_sb_clr};border-radius:8px;padding:12px;margin-top:8px">'
-                    f'<div style="color:{_sb_clr};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:8px">LIVE SCENARIO RESULT</div>'
-                    f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
-                    f'<div><div style="color:#64748b;font-size:9px">US economy today</div><div style="color:#60a5fa;font-size:16px;font-weight:700">{_sb_bw:+.2f}%</div></div>'
-                    f'<div><div style="color:#64748b;font-size:9px">US economy after change</div><div style="color:{"#22d3a0" if _sb_nw>0 else "#f87171"};font-size:16px;font-weight:700">{_sb_nw:+.2f}%</div></div>'
-                    f'</div>'
-                    f'<div style="background:#1a1d2e;border-radius:6px;padding:8px;text-align:center">'
-                    f'<div style="color:#64748b;font-size:9px">Change in US wellbeing</div>'
-                    f'<div style="color:{_sb_clr};font-size:22px;font-weight:700">{_sb_wd:+.2f}%</div>'
-                    f'<div style="color:#475569;font-size:10px">America is <b style="color:{_sb_clr}">{_sb_effect}</b> if tariff is {_sb_dir} by {abs(_sb_dpp)}pp</div>'
-                    f'</div>'
-                    f'</div>', unsafe_allow_html=True)
-
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Macro Overview", "Pharma Supply Chain", "Retail & Consumer Prices", "Manufacturing Exposure", "AI Analyst", "MCP Analyst", "Build Your Scenario"])
+tab1, tab2, tab3, tab4, tab6, tab7 = st.tabs(["Macro Overview", "Pharma Supply Chain", "Retail & Consumer Prices", "Manufacturing Exposure", "MCP Analyst", "Build Your Scenario"])
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — MACRO OVERVIEW
@@ -701,7 +622,7 @@ with tab1:
     fig_tariff.update_xaxes(range=[0, 75])
     fig_tariff.update_yaxes(autorange="reversed")
     st.plotly_chart(fig_tariff, use_container_width=True)
-    _explain("Each bar is the total tariff rate a country now faces when selling to the US. Red bars (50%+) are the hardest hit; China leads because its 34% Liberation Day rate stacks on a pre-existing 20%. If a country is selected in the sidebar it appears in white.")
+    _explain("Each bar is the total tariff rate a country now faces when selling to the US. Red bars (50%+) are the hardest hit; China leads because its 34% Liberation Day rate stacks on a pre-existing 20%. ")
 
     # ── CHAPTER 4: The world pays ─────────────────────────────────────────────
     _chapter(4, "The world pays — 194 economies, one map",
@@ -883,7 +804,7 @@ with tab1:
     st.markdown(
         f'<div style="background:linear-gradient(135deg,#0d1a2e,#1a1d2e);border:1px solid #2563eb;border-radius:12px;padding:20px 24px;margin-bottom:10px">'
         f'<div style="color:#e2e8f0;font-size:17px;font-weight:700;margin-bottom:6px">Think you could design a better tariff policy?</div>'
-        f'<div style="color:#94a3b8;font-size:13px">Open the <b style="color:#60a5fa">Build Your Scenario</b> tab to set your own rates for any of the 194 countries — and get a live verdict on wellbeing, prices, revenue and who gets hurt. Or pick a country in the sidebar\'s <b style="color:#60a5fa">Country Explorer</b> to see this whole page through that country\'s eyes.</div>'
+        f'<div style="color:#94a3b8;font-size:13px">Open the <b style="color:#60a5fa">Build Your Scenario</b> tab to set your own rates for any of the 194 countries — and get a live verdict on wellbeing, prices, revenue and who gets hurt.</div>'
         f'</div>', unsafe_allow_html=True)
 
     # ── Country Deep Dive — PE scenario chart + global rank ───────────────────
@@ -1772,296 +1693,6 @@ with tab4:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# TAB 5 — AI ANALYST
-# ═════════════════════════════════════════════════════════════════════════════
-with tab5:
-    import anthropic as _anthropic
-    import json as _json
-    import sys as _sys
-
-    # ── Anthropic client ──────────────────────────────────────────────────
-    _api_key = None
-    try:
-        _api_key = st.secrets["ANTHROPIC_API_KEY"]
-    except Exception:
-        _api_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    if not _api_key:
-        st.error("No Anthropic API key found. Set `ANTHROPIC_API_KEY` in `.streamlit/secrets.toml` or as an environment variable.")
-        st.stop()
-
-    # Network uses SSL inspection (corporate/university proxy with a custom CA cert
-    # that Python doesn't trust). verify=False bypasses certificate validation.
-    # trust_env=False prevents httpx reading SSLKEYLOGFILE (Windows AV named pipe).
-    os.environ.pop("SSLKEYLOGFILE", None)
-    import httpx as _httpx
-    _client = _anthropic.Anthropic(
-        api_key=_api_key,
-        http_client=_httpx.Client(trust_env=False, verify=False),
-    )
-
-    # ── Import MCP tool functions directly ───────────────────────────────
-    _mcp_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if _mcp_root not in _sys.path:
-        _sys.path.insert(0, _mcp_root)
-    from mcp_server.server import (
-        get_welfare_results,
-        get_scenario_comparison,
-        get_pharma_supplier_risk,
-        get_quintile_burden,
-        get_manufacturing_shock,
-        get_manufacturing_reality,
-        get_retail_price_reality,
-        run_tariff_scenario,
-    )
-
-    # ── Tool definitions for the Anthropic API ────────────────────────────
-    _TOOLS = [
-        {
-            "name": "get_welfare_results",
-            "description": "Query GE welfare/CPI/trade results for one or all countries under a given scenario.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "country":  {"type": "string",  "description": "ISO3 country code e.g. 'USA', 'CHN'. Omit for all countries."},
-                    "scenario": {"type": "string",  "description": "One of: ustr_no_retaliation, ustr_lump_sum, optimal_tariff, ustr_reciprocal_retaliation, ustr_optimal_retaliation, flat_15pct."},
-                },
-            },
-        },
-        {
-            "name": "get_scenario_comparison",
-            "description": "Pivot welfare outcomes across multiple countries and scenarios.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "countries": {"type": "array", "items": {"type": "string"}, "description": "List of ISO3 codes."},
-                    "scenarios": {"type": "array", "items": {"type": "string"}, "description": "List of scenario names."},
-                },
-            },
-        },
-        {
-            "name": "get_pharma_supplier_risk",
-            "description": "Query pharma import exposure, compute HHI concentration, return suppliers ranked by risk.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "country":  {"type": "string",  "description": "Exporting country name e.g. 'Ireland'. Omit for all."},
-                    "hts_code": {"type": "integer", "description": "HTS code: 3002, 3003, or 3004. Omit for all."},
-                },
-            },
-        },
-        {
-            "name": "get_quintile_burden",
-            "description": "Tariff incidence by income quintile. Omit category for pharma burden; pass category='retail' for the retail GE quintile incidence.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "category": {"type": "string", "description": "Retail category: Grocery, Clothing, Footwear, Home Appliances, Electronics. Omit for pharma quintile data."},
-                },
-            },
-        },
-        {
-            "name": "get_manufacturing_shock",
-            "description": "Return sector-level tariff shocks and gross output ranked by impact.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "naics_code": {"type": "string",  "description": "NAICS code prefix e.g. '3364'. Omit for top sectors."},
-                    "top_n":      {"type": "integer", "description": "Number of top sectors (default 10, max 50)."},
-                },
-            },
-        },
-        {
-            "name": "get_manufacturing_reality",
-            "description": "MEASURED post-Liberation Day manufacturing outcomes from USITC customs and BEA output: per-product import changes, effective duty rates actually paid, duties collected, factory output. Use this for what actually happened (vs model predictions).",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "chapter": {"type": "integer", "description": "HTS chapter for a monthly series: 39, 72, 73, 84, 85, 87, 94, 95. Omit for the cross-product summary."},
-                },
-            },
-        },
-        {
-            "name": "get_retail_price_reality",
-            "description": "MEASURED official BLS consumer price outcomes after Liberation Day: per-category price change since Mar 2025 and inflation acceleration vs pre-tariff trend (tariff-exposed goods vs domestic services).",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "series_name": {"type": "string", "description": "Category filter, e.g. 'Apparel' or 'Computers'. Omit for all categories."},
-                },
-            },
-        },
-        {
-            "name": "run_tariff_scenario",
-            "description": "Run a partial equilibrium approximation with custom tariff rates and return welfare delta vs USTR baseline.",
-            "input_schema": {
-                "type": "object",
-                "required": ["tariff_overrides"],
-                "properties": {
-                    "tariff_overrides": {"type": "object",  "description": "ISO3 → tariff rate mapping e.g. {\"CHN\": 0.60, \"DEU\": 0.20}."},
-                    "countries":        {"type": "array", "items": {"type": "string"}, "description": "Countries to include in output."},
-                },
-            },
-        },
-    ]
-
-    _TOOL_FN_MAP = {
-        "get_welfare_results":     get_welfare_results,
-        "get_scenario_comparison": get_scenario_comparison,
-        "get_pharma_supplier_risk": get_pharma_supplier_risk,
-        "get_quintile_burden":     get_quintile_burden,
-        "get_manufacturing_shock": get_manufacturing_shock,
-        "get_manufacturing_reality": get_manufacturing_reality,
-        "get_retail_price_reality": get_retail_price_reality,
-        "run_tariff_scenario":     run_tariff_scenario,
-    }
-
-    def _call_tool(name: str, inputs: dict) -> dict:
-        fn = _TOOL_FN_MAP.get(name)
-        if fn is None:
-            return {"data": {"error": f"Unknown tool: {name}"}, "chart_spec": {}}
-        return fn(**inputs)
-
-    def _run_agentic(messages: list) -> tuple[str, list]:
-        """Run the agentic loop: send messages, handle tool calls, return (text, charts)."""
-        charts = []
-        loop_msgs = list(messages)
-        text_response = ""
-
-        while True:
-            response = _client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=4096,
-                tools=_TOOLS,
-                messages=loop_msgs,
-                system=(
-                    "You are an expert trade economist analysing the Liberation Day tariff impacts. "
-                    "You have access to tools that query GE model results, pharma supply chain data, "
-                    "income quintile incidence, and manufacturing sector shocks. "
-                    "When asked quantitative questions, always call the relevant tool first, "
-                    "then synthesise the numbers into a clear, structured answer with policy implications. "
-                    "Format responses in markdown. Use bullet points and headers for readability."
-                ),
-            )
-
-            # Collect any text content
-            for block in response.content:
-                if hasattr(block, "text"):
-                    text_response += block.text
-
-            if response.stop_reason != "tool_use":
-                break
-
-            # Handle tool calls
-            tool_results = []
-            for block in response.content:
-                if block.type != "tool_use":
-                    continue
-                tool_result = _call_tool(block.name, block.input)
-                # Stash chart spec if present
-                if tool_result.get("chart_spec"):
-                    charts.append((block.name, tool_result["chart_spec"]))
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": _json.dumps(tool_result["data"], default=str),
-                })
-
-            loop_msgs.append({"role": "assistant", "content": response.content})
-            loop_msgs.append({"role": "user",      "content": tool_results})
-
-        return text_response, charts
-
-    # ── Session state ─────────────────────────────────────────────────────
-    if "ai_messages" not in st.session_state:
-        st.session_state.ai_messages = []  # list of {"role", "content", "charts": [...]}
-
-    # ── CSS additions for chat UI ─────────────────────────────────────────
-    st.markdown("""
-    <style>
-      .chat-user   { background:#1e2235; border-left:3px solid #2563eb; padding:12px 16px; border-radius:0 8px 8px 0; margin:8px 0; color:#e2e8f0; }
-      .chat-ai     { background:#151824; border-left:3px solid #22d3a0; padding:12px 16px; border-radius:0 8px 8px 0; margin:8px 0; color:#cbd5e1; }
-      .chat-label  { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; }
-      .user-label  { color:#2563eb; }
-      .ai-label    { color:#22d3a0; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ── Generate Briefing button ──────────────────────────────────────────
-    st.markdown('<div class="section-header">🤖 AI Analyst — Liberation Day Tariff Intelligence</div>', unsafe_allow_html=True)
-
-    col_btn, col_info = st.columns([2, 5])
-    with col_btn:
-        briefing_scenario = st.selectbox(
-            "Briefing scenario",
-            ["ustr_no_retaliation","ustr_reciprocal_retaliation","flat_15pct"],
-            key="briefing_scenario_sel",
-        )
-        run_briefing = st.button("📋 Generate Policy Briefing", use_container_width=True)
-    with col_info:
-        st.markdown("""
-        <div class="insight-box">
-        Ask any question about tariff impacts, pharma supply chain risk, income distributional effects,
-        or manufacturing exposure. The AI analyst calls live data tools and returns structured analysis with charts.
-        </div>""", unsafe_allow_html=True)
-
-    if run_briefing:
-        briefing_prompt = (
-            f"Generate a structured policy briefing for the scenario **{briefing_scenario}**. "
-            "Chain these three analyses:\n"
-            "1. Call get_welfare_results to get US and top-5 affected countries' welfare & CPI.\n"
-            "2. Call get_pharma_supplier_risk to assess supply chain concentration (HHI) and top risk countries.\n"
-            "3. Call get_quintile_burden to quantify distributional incidence across income groups.\n\n"
-            "Synthesise into a policy memo with: Executive Summary, Key Findings (bullet points), "
-            "Supply Chain Risks, Distributional Impacts, and Policy Recommendations."
-        )
-        st.session_state.ai_messages.append({"role": "user", "content": briefing_prompt, "charts": []})
-
-    # ── Chat history ──────────────────────────────────────────────────────
-    history_container = st.container()
-    with history_container:
-        for msg in st.session_state.ai_messages:
-            if msg["role"] == "user":
-                st.markdown(f'<div class="chat-user"><div class="chat-label user-label">You</div>{msg["content"]}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="chat-ai"><div class="chat-label ai-label">AI Analyst</div>', unsafe_allow_html=True)
-                st.markdown(msg["content"])
-                st.markdown("</div>", unsafe_allow_html=True)
-                for chart_name, chart_spec in msg.get("charts", []):
-                    if chart_spec:
-                        try:
-                            st.plotly_chart(go.Figure(chart_spec), use_container_width=True)
-                        except Exception:
-                            pass
-
-    # ── Trigger AI response if last message is from user ─────────────────
-    if st.session_state.ai_messages and st.session_state.ai_messages[-1]["role"] == "user":
-        api_messages = [
-            {"role": m["role"], "content": m["content"]}
-            for m in st.session_state.ai_messages
-            if m["role"] in ("user", "assistant")
-        ]
-        with st.spinner("Analysing..."):
-            try:
-                text_out, charts_out = _run_agentic(api_messages)
-                st.session_state.ai_messages.append({
-                    "role": "assistant",
-                    "content": text_out,
-                    "charts": charts_out,
-                })
-                st.rerun()
-            except Exception as e:
-                st.error(f"API error: {e}")
-
-    # ── Chat input ────────────────────────────────────────────────────────
-    st.markdown("---")
-    user_input = st.chat_input("Ask about tariff impacts, pharma risk, income effects, manufacturing…")
-    if user_input:
-        st.session_state.ai_messages.append({"role": "user", "content": user_input, "charts": []})
-        st.rerun()
-
-
-# ═════════════════════════════════════════════════════════════════════════════
 # TAB 6 — MCP ANALYST
 # Connects to mcp_server/server.py over stdio via the MCP protocol.
 # Tools are discovered dynamically; every tool call is routed through the
@@ -2204,7 +1835,7 @@ with tab6:
         st.session_state.mcp6_messages = []
 
     # ── UI — matches Tab 5 layout exactly ────────────────────────────────
-    st.markdown('<div class="section-header">&#128299; MCP Analyst &#8212; Live Protocol Connection</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">MCP Analyst &#8212; Live Protocol Connection</div>', unsafe_allow_html=True)
 
     col_btn6, col_info6 = st.columns([2, 5])
     with col_btn6:
