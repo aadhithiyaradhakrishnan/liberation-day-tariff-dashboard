@@ -631,34 +631,34 @@ with tab1:
                 f'</div>', unsafe_allow_html=True)
 
     # ── CHAPTER 2: Did it work? Promises vs measured reality ────────────────
-    _chapter(2, "Did it work? — promises vs measured reality",
-             "Five things the tariffs were supposed to do, graded against official post-April-2025 data. Sources tagged on every row.")
+    _chapter(2, "Did it work?",
+             "The five big questions, answered with official post-April-2025 data. Sources tagged on every row.")
 
     def _verdict_row(claim, verdict, chip_bg, chip_fg, evidence, source):
         st.markdown(
             f'<div style="display:flex;align-items:center;gap:16px;background:#1a1d2e;border:1px solid #2d3250;border-radius:10px;padding:14px 18px;margin-bottom:8px">'
-            f'<div style="flex:0 0 260px;color:#e2e8f0;font-size:14px;font-weight:600">“{claim}”</div>'
+            f'<div style="flex:0 0 260px;color:#e2e8f0;font-size:14px;font-weight:600">{claim}</div>'
             f'<div style="flex:0 0 150px"><span style="background:{chip_bg};color:{chip_fg};font-size:11px;font-weight:800;letter-spacing:1px;padding:4px 12px;border-radius:20px;white-space:nowrap">{verdict}</span></div>'
             f'<div style="flex:1;color:#94a3b8;font-size:13px;line-height:1.45">{evidence} <span style="color:#475569;font-size:11px">· {source}</span></div>'
             f'</div>', unsafe_allow_html=True)
 
-    _verdict_row("Tariffs will raise massive revenue",
+    _verdict_row("Did tariffs raise massive revenue?",
         "✓ DELIVERED", "#0d2218", "#22d3a0",
         f"USITC calculated duties on eight manufacturing chapters ran <b>{_dut_post_h/max(_dut_pre_h,1):.1f}× higher</b> than the year before — <b>${_dut_post_h/1e9:,.0f}B</b> during Apr–Dec 2025 (includes all trade measures in force, not Liberation Day alone).",
         "USITC customs data, measured")
-    _verdict_row("Prices won't go up for Americans",
+    _verdict_row("Did prices stay flat for Americans?",
         "✗ DIDN'T HAPPEN", "#2a0f0f", "#f87171",
         f"Headline inflation accelerated from <b>{_infl_pre_h:.1f}%</b> to <b>{_infl_post_h:.1f}%/yr</b>. Computers flipped from getting cheaper ({_comp_pre_h:+.1f}%/yr) to inflating ({_comp_post_h:+.1f}%/yr); apparel and furniture accelerated ~3pp — while untariffed services cooled.",
         "BLS CPI, measured")
-    _verdict_row("Manufacturing will come back",
+    _verdict_row("Did manufacturing come back?",
         "◐ MIXED", "#2a230f", "#fbbf24",
         f"US factory output grew <b>{_bea_chg_h:+.1f}%</b> (nominal) in the year after tariffs and steel imports fell 24% — but machinery imports <b>rose 26%</b>: America still buys the equipment it can't make.",
         "BEA + USITC, measured")
-    _verdict_row("Imports will collapse, the deficit will shrink",
+    _verdict_row("Did imports collapse and the deficit shrink?",
         "◐ MIXED", "#2a230f", "#fbbf24",
         f"Targeted categories were hit hard — steel −24%, vehicles −18%, toys −21% — but <b>total</b> manufacturing imports came in {(_imp_post_h/max(_imp_pre_h,1)-1)*100:+.1f}% vs the year before. Trade rerouted more than it collapsed.",
         "USITC customs data, measured")
-    _verdict_row("America will come out ahead",
+    _verdict_row("Did America come out ahead?",
         "◐ MODEL SAYS BARELY", "#2a230f", "#fbbf24",
         f"The 194-country GE model puts US welfare at <b>{_us_welfare_h:+.2f}%</b> — a small net gain (tariff revenue outweighing consumer costs) — while the world loses <b>${abs(_global_bn_h):,.0f}B</b> and {_n_lose_h} countries shrink.",
         "GE model estimate")
