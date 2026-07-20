@@ -47,3 +47,6 @@ data/sectoral_tariffs/ref_isic33_vbeta1-2024-12.dta
 data/processed/icio_2022/io_coeff_matrix.npy
 data/processed/icio_2022/io_intermediate_matrix.npy
 data/code_and_release_data/301 model/D_all_data.zip
+
+# Secrets - never commit
+.streamlit/secrets.toml
